@@ -122,7 +122,6 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -234,10 +233,6 @@ const AdminDashboard = () => {
   
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-  };
-  
-  const handleDateFilterChange = (e) => {
-    setDateFilter(e.target.value);
   };
   
   const handleStartDateChange = (e) => {

@@ -135,15 +135,9 @@ const CoachDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [hideReviewed, setHideReviewed] = useState(false);
-  
-  // Add state for metrics
-  const [totalClients, setTotalClients] = useState(0);
-  const [reviewedClients, setReviewedClients] = useState(0);
-  const [notReviewedClients, setNotReviewedClients] = useState(0);
   
   // Fetch clients assigned to this coach - using useCallback to memoize
   const fetchClients = useCallback(async () => {
@@ -216,17 +210,6 @@ const CoachDashboard = () => {
     fetchClients();
   }, [fetchClients]);
   
-  // Update statistics whenever clients change - add eslint-disable comments for now
-  // since these variables are likely used in a UI we haven't seen
-  useEffect(() => {
-    // eslint-disable-next-line no-unused-vars
-    setTotalClients(clients.length);
-    // eslint-disable-next-line no-unused-vars
-    setReviewedClients(clients.filter(client => client.review_status).length);
-    // eslint-disable-next-line no-unused-vars
-    setNotReviewedClients(clients.length - clients.filter(client => client.review_status).length);
-  }, [clients]);
-  
   // Filter clients based on search term, reviewed status, and date
   const filteredClients = clients.filter(client => {
     const matchesSearch = 
@@ -246,10 +229,6 @@ const CoachDashboard = () => {
   
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-  };
-  
-  const handleDateFilterChange = (e) => {
-    setDateFilter(e.target.value);
   };
   
   const handleStartDateChange = (e) => {

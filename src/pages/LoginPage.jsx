@@ -106,10 +106,9 @@ const LoginPage = () => {
               {isAdminLogin ? translations.adminPortal[language] : translations.coachPortal[language]}
             </h1>
           </div>
-          <div className="flex-1 flex justify-center">
+          <div>
             <LanguageToggle />
           </div>
-          <div className="flex-1"></div>
         </div>
         
         <div className="p-6">

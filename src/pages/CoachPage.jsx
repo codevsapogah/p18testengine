@@ -22,11 +22,11 @@ const CoachPage = () => {
               </h1>
             </div>
             
-            <div className="mx-auto">
+            <div className="ml-auto">
               <LanguageToggle />
             </div>
             
-            <div className="ml-auto flex items-center space-x-4">
+            <div className="ml-4 flex items-center space-x-4">
               <span className="text-gray-600 max-w-[160px] truncate">
                 {user?.name || user?.email}
               </span>

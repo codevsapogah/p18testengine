@@ -1,7 +1,11 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+// Remove direct Supabase connection since we'll use our API
+// import { supabase } from '../supabase';
 
 export const AuthContext = createContext();
+
+// API URL
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3030/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,61 +13,56 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Check for stored auth data
-    const storedUser = localStorage.getItem('auth_user');
-    const storedRole = localStorage.getItem('auth_role');
+    // Check if we have a token in cookies and fetch current user
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/auth/me`, {
+          method: 'GET',
+          credentials: 'include', // Important for cookies
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          setRole(data.user.role);
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (storedUser && storedRole) {
-      setUser(JSON.parse(storedUser));
-      setRole(storedRole);
-    }
-    
-    setLoading(false);
+    checkAuth();
   }, []);
   
   const login = async (email, password) => {
     try {
-      // Fetch the user from approved_coaches table
-      const { data, error } = await supabase
-        .from('approved_coaches')
-        .select('*')
-        .eq('email', email)
-        .single();
-        
-      if (error) throw error;
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        credentials: 'include', // Important for cookies
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
       
-      // Simple password verification (in a real app, this would be handled by Supabase Auth)
-      if (data && data.password === password) {
-        // Store user and role in localStorage
-        localStorage.setItem('auth_user', JSON.stringify({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          phone: data.phone,
-          is_admin: data.is_admin
-        }));
-        
-        // Set role based on login origin (will be determined in LoginPage)
-        const userRole = data.is_admin ? 'admin' : 'coach';
-        localStorage.setItem('auth_role', userRole);
-        
-        // Update state
-        setUser({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          phone: data.phone,
-          is_admin: data.is_admin
-        });
-        setRole(userRole);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUser(data.user);
+        setRole(data.user.role);
         
         return { 
           success: true, 
-          is_admin: data.is_admin,
-          role: userRole 
+          is_admin: data.user.role === 'admin',
+          role: data.user.role
         };
       } else {
-        throw new Error('Invalid credentials');
+        throw new Error(data.message || 'Login failed');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -71,14 +70,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  const logout = () => {
-    // Clear auth data from localStorage
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_role');
-    
-    // Update state
-    setUser(null);
-    setRole(null);
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Clear user data regardless of response
+      setUser(null);
+      setRole(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear user data on error
+      setUser(null);
+      setRole(null);
+    }
   };
   
   const isAuthenticated = () => {
