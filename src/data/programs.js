@@ -1,0 +1,60 @@
+export const programs = [
+  { id: 1, ru: 'Эмоциональный голод', kz: 'Эмоционалды аштық' },
+  { id: 2, ru: 'Покинутость', kz: 'Тастанды' },
+  { id: 3, ru: 'Использование', kz: 'Пайдалану' },
+  { id: 4, ru: 'Отверженность', kz: 'Қабылданбау' },
+  { id: 5, ru: 'Поломанность', kz: 'Сынық' },
+  { id: 6, ru: 'Провал', kz: 'Сәтсіздік' },
+  { id: 7, ru: 'Беспомощность', kz: 'Дәрменсіздік' },
+  { id: 8, ru: 'Пророчество', kz: 'Болжам' },
+  { id: 9, ru: 'Растворение', kz: 'Басқаға еру' },
+  { id: 10, ru: 'Подчинение', kz: 'Бағыну' },
+  { id: 11, ru: 'Самопожертвование', kz: 'Өзін құрбан ету' },
+  { id: 12, ru: 'Эмоциональная ингибиция', kz: 'Эмоцияны ұстау' },
+  { id: 13, ru: 'Перфекционизм', kz: 'Перфекционизм' },
+  { id: 14, ru: 'Надменность', kz: 'Менмендік' },
+  { id: 15, ru: 'Отсутствие дисциплины', kz: 'Дисциплина жоқтығы' },
+  { id: 16, ru: 'Поиск признания', kz: 'Мойындалуды іздеу' },
+  { id: 17, ru: 'Пессимизм', kz: 'Пессимизм' },
+  { id: 18, ru: 'Инструкции', kz: 'Ережелер' }
+];
+
+export const getScoreLevel = (score) => {
+  if (score >= 80) return 'high';
+  if (score >= 60) return 'elevated';
+  if (score >= 40) return 'medium';
+  return 'low';
+};
+
+export const levelColors = {
+  high: '#DC2626', // red card
+  elevated: '#ff6100', // orange card
+  medium: '#ffd900', // yellow card
+  low: '#16A34A' // green card
+};
+
+export const levelTextColors = {
+  high: '#ffffff', // white text for red
+  elevated: '#ffffff', // white text for orange
+  medium: '#000000', // black text for yellow
+  low: '#ffffff' // white text for green
+};
+
+export const levelTranslations = {
+  high: {
+    ru: 'Высокий',
+    kz: 'Жоғары'
+  },
+  elevated: {
+    ru: 'Повышенный',
+    kz: 'Жоғарылаған'
+  },
+  medium: {
+    ru: 'Средний',
+    kz: 'Орташа'
+  },
+  low: {
+    ru: 'Пониженный',
+    kz: 'Төмендеген'
+  }
+}; 
