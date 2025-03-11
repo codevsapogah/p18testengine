@@ -48,8 +48,8 @@ const GridView = ({ results, language }) => {
       {/* High results section (only if there are any) */}
       {highResults.length > 0 && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 bg-red-100">
-            <h2 className="text-xl font-bold text-red-800">
+          <div className="p-4" style={{ backgroundColor: '#f3f1ff' }}>
+            <h2 className="text-xl font-bold" style={{ color: '#2a14cc' }}>
               {translations.highTitle[language]}
             </h2>
           </div>

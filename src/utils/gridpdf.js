@@ -115,22 +115,19 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     const blue = [63, 86, 217];    // Royal blue
     const lightBlue = [219, 234, 254]; // bg-blue-100
     
-    // Add logo in header - with error handling
+    // Add logo in header - simpler text-based approach
     try {
-      // Use a small embedded base64 P18 logo instead of external file
-      const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFFmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNi4wLWMwMDIgNzkuMTY0NDYwLCAyMDIwLzA1LzEyLTE2OjA0OjE3ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjEuMiAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjMtMDctMDFUMTU6NTk6MDcrMDY6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIzLTA3LTAxVDE2OjA2OjQ4KzA2OjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDIzLTA3LTAxVDE2OjA2OjQ4KzA2OjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjNlYjVkMjQ3LTQyYjct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';
-      
-      // Add the logo
-      doc.addImage(logoBase64, 'PNG', margin, margin - 5, 15, 15);
+      // Use text-based logo instead of image
+      doc.setTextColor(42, 20, 204);
+      doc.setFontSize(12);
+      doc.setFont('Roboto', 'bold');
+      doc.text('P18', margin + 5, margin, { align: 'center' });
       doc.link(margin, margin - 5, 15, 15, { url: 'https://p18.kz/' });
+      doc.setTextColor(255, 255, 255); // Reset text color
     } catch (logoError) {
-      console.warn('Logo image could not be loaded:', logoError);
+      console.warn('Logo text error:', logoError);
       // Continue without the logo - it's not critical
     }
-    
-    // Header with user info
-    doc.setFillColor(239, 68, 68); // #EF4444
-    doc.rect(0, 0, pageWidth, 45, 'F');
     
     // Name and test info
     doc.setTextColor(255, 255, 255);
@@ -139,26 +136,60 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     const headerText = language === 'ru' 
       ? `${userData.user_name}, вот ваши результаты теста P18`
       : `${userData.user_name}, сіздің P18 тестінің нәтижелері`;
-    doc.text(headerText, margin, 15);
+       
+    // Check if text is too long for the page width and wrap if needed
+    const maxWidth = pageWidth - (margin * 2);
+    const textWidth = doc.getTextWidth(headerText);
+    
+    // Header with user info - adjust height based on content wrapping
+    const headerHeight = textWidth > maxWidth ? 55 : 45; // Taller header when text wraps
+    doc.setFillColor(42, 20, 204); // #2a14cc
+    doc.rect(0, 0, pageWidth, headerHeight, 'F');
+    
+    // Initialize content starting position
+    let currentY;
+    
+    if (textWidth > maxWidth) {
+      // Split the text into name and message parts
+      const namePart = userData.user_name;
+      const messagePart = language === 'ru' 
+        ? "вот ваши результаты теста P18"
+        : "сіздің P18 тестінің нәтижелері";
+         
+      // Write name on first line
+      doc.text(namePart, margin, 15);
+      // Write message on second line
+      doc.text(messagePart, margin, 25);
+      
+      // Adjust content start position for wrapped header
+      currentY = 75;
+    } else {
+      // Original single line
+      doc.text(headerText, margin, 15);
+      
+      // Original content start position
+      currentY = 65;
+    }
     
     // User info in header
     doc.setFontSize(12);
     doc.setFont('Roboto', 'normal');
     
-    // Date
+    // Date - adjust Y position based on whether header was wrapped
+    const dateY = textWidth > maxWidth ? 35 : 25;
     const date = formatDate(userData.created_at, language);
-    doc.text(date, margin, 25);
+    doc.text(date, margin, dateY);
     
-    // User email
-    doc.text(`Email: ${userData.user_email}`, margin, 32);
+    // User email - adjust Y position
+    const emailY = textWidth > maxWidth ? 42 : 32;
+    doc.text(`Email: ${userData.user_email}`, margin, emailY);
     
-    // Coach email if exists
+    // Coach email if exists - adjust Y position
     if (userData.coach_email) {
-      doc.text(`Коуч: ${userData.coach_email}`, margin, 39);
+      const coachY = textWidth > maxWidth ? 49 : 39;
+      doc.text(`Коуч: ${userData.coach_email}`, margin, coachY);
     }
     
-    let currentY = 65;
-
     // Title - High Results
     doc.setFontSize(20);
     doc.setFont('Roboto', 'bold');
@@ -348,9 +379,14 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     const logoSize = 8;
     const logoX = (pageWidth - logoSize) / 2;
     const logoY = footerY + 8;
-    doc.addImage('/logo192.png', 'PNG', logoX, logoY, logoSize, logoSize);
-    // Add clickable link to the logo
+    
+    // Use text instead of image for footer logo
+    doc.setTextColor(42, 20, 204);
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'bold');
+    doc.text('P18', pageWidth / 2, footerY + 12, { align: 'center' });
     doc.link(logoX, logoY, logoSize, logoSize, { url: 'https://p18.kz/' });
+    doc.setTextColor(44, 54, 78); // Reset text color
 
     // Save with custom filename
     doc.save(`${filename}.pdf`);

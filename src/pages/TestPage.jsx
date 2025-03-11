@@ -236,7 +236,7 @@ const TestPage = () => {
       // Calculate results before navigating
       const { data, error } = await supabase
         .from('quiz_results')
-        .select('answers')
+        .select('answers, user_name, user_email, coach_email')
         .eq('id', sessionId)
         .single();
         
@@ -249,11 +249,60 @@ const TestPage = () => {
       const { error: updateError } = await supabase
         .from('quiz_results')
         .update({ 
-          calculated_results: calculatedResults 
+          calculated_results: calculatedResults,
+          completed_at: new Date()
         })
         .eq('id', sessionId);
         
       if (updateError) throw updateError;
+      
+      // Send email to client
+      if (data.user_email) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/email/completion`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}` // If using token auth
+            },
+            body: JSON.stringify({
+              quizId: sessionId,
+              clientEmail: data.user_email,
+              clientName: data.user_name || 'Client'
+            })
+          });
+          
+          if (!response.ok) {
+            console.warn('Failed to send client email notification');
+          }
+        } catch (emailErr) {
+          console.warn('Error sending client email:', emailErr);
+        }
+      }
+      
+      // Send email to coach
+      if (data.coach_email) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/email/notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}` // If using token auth
+            },
+            body: JSON.stringify({
+              quizId: sessionId,
+              clientName: data.user_name || 'Client',
+              coachEmail: data.coach_email
+            })
+          });
+          
+          if (!response.ok) {
+            console.warn('Failed to send coach notification');
+          }
+        } catch (emailErr) {
+          console.warn('Error sending coach notification:', emailErr);
+        }
+      }
       
       // Now navigate to results page
       navigate(`/results/grid/${sessionId}`);

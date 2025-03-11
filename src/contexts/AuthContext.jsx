@@ -41,6 +41,9 @@ export const AuthProvider = ({ children }) => {
   
   const login = async (email, password) => {
     try {
+      console.log('Attempting login with email:', email);
+      console.log('API URL:', API_URL);
+      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         credentials: 'include', // Important for cookies
@@ -50,7 +53,9 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
       
+      console.log('Login response status:', response.status);
       const data = await response.json();
+      console.log('Login response:', data);
       
       if (response.ok) {
         setUser(data.user);

@@ -733,7 +733,7 @@ const ResultsPage = ({ view = 'grid' }) => {
           ) : (
             <>
               {/* Header with user info - COMPLETELY REDESIGNED */}
-              <div className="bg-red-500 rounded-lg shadow-lg p-4 sm:p-6 mb-8 text-white">
+              <div className="rounded-lg shadow-lg p-4 sm:p-6 mb-8 text-white" style={{ backgroundColor: '#2a14cc' }}>
                 {/* Title and user info */}
                 <div className="mb-6">
                   <h1 className="text-2xl sm:text-3xl font-bold mb-4">
@@ -761,13 +761,15 @@ const ResultsPage = ({ view = 'grid' }) => {
                   <div className="flex rounded-lg overflow-hidden bg-white/20 shadow-inner">
                     <button
                       onClick={() => toggleView('list')}
-                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'list' ? 'bg-white text-red-500' : 'text-white hover:bg-white/10'}`}
+                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'list' ? 'bg-white' : 'text-white hover:bg-white/10'}`}
+                      style={currentView === 'list' ? {color: '#2a14cc'} : {}}
                     >
                       {translations.listView[language]}
                     </button>
                     <button
                       onClick={() => toggleView('grid')}
-                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'grid' ? 'bg-white text-red-500' : 'text-white hover:bg-white/10'}`}
+                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'grid' ? 'bg-white' : 'text-white hover:bg-white/10'}`}
+                      style={currentView === 'grid' ? {color: '#2a14cc'} : {}}
                     >
                       {translations.gridView[language]}
                     </button>
@@ -776,7 +778,8 @@ const ResultsPage = ({ view = 'grid' }) => {
                   {/* Download PDF button */}
                   <button
                     onClick={handleDownloadPDF}
-                    className="py-2.5 px-4 bg-white text-red-500 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors flex items-center justify-center shadow-sm"
+                    className="py-2.5 px-4 bg-white rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors flex items-center justify-center shadow-sm"
+                    style={{ color: '#2a14cc' }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
