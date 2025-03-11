@@ -1,24 +1,52 @@
 const { sendQuizCompletionEmail, sendCoachNotificationEmail, sendEmail } = require('../utils/email');
 const { supabase } = require('../utils/supabase');
+const { generateGridPDF } = require('../utils/pdfGenerator');
 
 // Send completion email to user
 exports.sendCompletionEmail = async (req, res) => {
   try {
-    const { quizId, clientEmail, clientName } = req.body;
+    const { quizId, clientEmail, clientName, language } = req.body;
     
     if (!quizId || !clientEmail || !clientName) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     
-    // Generate a results URL
-    const resultUrl = `${process.env.CLIENT_URL}/results/view/${quizId}`;
+    // Generate a results URL - use grid format directly
+    const resultUrl = `${process.env.CLIENT_URL}/results/grid/${quizId}`;
     
-    // Send the email
+    // Get quiz data to generate PDF
+    const { data: quizData, error: quizError } = await supabase
+      .from('quiz_results')
+      .select('*')
+      .eq('id', quizId)
+      .single();
+    
+    if (quizError) {
+      console.error('Error fetching quiz data for PDF:', quizError);
+      return res.status(500).json({ message: 'Failed to fetch quiz data for PDF' });
+    }
+    
+    // Generate PDF
+    let pdfBuffer = null;
+    try {
+      // Base URL for permalinks in the PDF
+      const baseUrl = process.env.CLIENT_URL || 'https://p18.kz';
+      pdfBuffer = await generateGridPDF(quizData, language || 'ru', quizId, baseUrl);
+      console.log('PDF generated successfully');
+    } catch (pdfError) {
+      console.error('Error generating PDF:', pdfError);
+      // Continue without PDF if generation fails
+    }
+    
+    // Send the email with PDF attachment
     await sendQuizCompletionEmail({
       to: clientEmail,
       name: clientName,
       quizId,
-      resultUrl
+      resultUrl,
+      language: language || 'ru',
+      pdfBuffer,
+      fileName: null // Let the email utility determine filename based on data
     });
     
     // Update the database to indicate email was sent
@@ -39,21 +67,48 @@ exports.sendCompletionEmail = async (req, res) => {
 // Send notification to coach
 exports.sendCoachNotification = async (req, res) => {
   try {
-    const { quizId, clientName, coachEmail, coachName } = req.body;
+    const { quizId, clientName, coachEmail, coachName, language } = req.body;
     
     if (!quizId || !clientName || !coachEmail) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
     
-    // Generate a results URL for the coach
-    const resultUrl = `${process.env.CLIENT_URL}/coach/results/${quizId}`;
+    // Generate a results URL for the coach - use grid format directly
+    const resultUrl = `${process.env.CLIENT_URL}/results/grid/${quizId}`;
     
-    // Send the email
+    // Get quiz data to generate PDF
+    const { data: quizData, error: quizError } = await supabase
+      .from('quiz_results')
+      .select('*')
+      .eq('id', quizId)
+      .single();
+    
+    if (quizError) {
+      console.error('Error fetching quiz data for PDF:', quizError);
+      return res.status(500).json({ message: 'Failed to fetch quiz data for PDF' });
+    }
+    
+    // Generate PDF
+    let pdfBuffer = null;
+    try {
+      // Base URL for permalinks in the PDF
+      const baseUrl = process.env.CLIENT_URL || 'https://p18.kz';
+      pdfBuffer = await generateGridPDF(quizData, language || 'ru', quizId, baseUrl);
+      console.log('Coach PDF generated successfully');
+    } catch (pdfError) {
+      console.error('Error generating coach PDF:', pdfError);
+      // Continue without PDF if generation fails
+    }
+    
+    // Send the email with PDF attachment
     await sendCoachNotificationEmail({
       to: coachEmail,
       coachName: coachName || 'Coach',
       clientName,
-      resultUrl
+      resultUrl,
+      language: language || 'ru',
+      pdfBuffer,
+      fileName: null // Let the email utility determine filename based on data
     });
     
     // Update the database to indicate coach notification was sent

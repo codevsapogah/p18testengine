@@ -268,12 +268,15 @@ const TestPage = () => {
             body: JSON.stringify({
               quizId: sessionId,
               clientEmail: data.user_email,
-              clientName: data.user_name || 'Client'
+              clientName: data.user_name || 'Client',
+              language
             })
           });
           
           if (!response.ok) {
             console.warn('Failed to send client email notification');
+          } else {
+            console.log('Client email notification sent successfully');
           }
         } catch (emailErr) {
           console.warn('Error sending client email:', emailErr);
@@ -292,12 +295,15 @@ const TestPage = () => {
             body: JSON.stringify({
               quizId: sessionId,
               clientName: data.user_name || 'Client',
-              coachEmail: data.coach_email
+              coachEmail: data.coach_email,
+              language
             })
           });
           
           if (!response.ok) {
             console.warn('Failed to send coach notification');
+          } else {
+            console.log('Coach notification sent successfully');
           }
         } catch (emailErr) {
           console.warn('Error sending coach notification:', emailErr);
