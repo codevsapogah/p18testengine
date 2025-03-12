@@ -37,6 +37,7 @@ const TestPage = () => {
   const [answers, setAnswers] = useState({});
   const [sessionId, setSessionId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [randomizedQuestions, setRandomizedQuestions] = useState([]);
   
@@ -232,6 +233,8 @@ const TestPage = () => {
   };
 
   const handleComplete = async () => {
+    setSubmitting(true);
+    
     try {
       // Calculate results before navigating
       const { data, error } = await supabase
@@ -254,16 +257,19 @@ const TestPage = () => {
         })
         .eq('id', sessionId);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating calculated results:', updateError);
+        // Continue even if update fails
+      }
       
       // Send email to client
       if (data.user_email) {
         try {
+          console.log('Sending email to client:', data.user_email);
           const response = await fetch(`${process.env.REACT_APP_API_URL}/email/completion`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}` // If using token auth
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               quizId: sessionId,
@@ -274,7 +280,7 @@ const TestPage = () => {
           });
           
           if (!response.ok) {
-            console.warn('Failed to send client email notification');
+            console.warn('Failed to send client email notification', await response.text());
           } else {
             console.log('Client email notification sent successfully');
           }
@@ -286,11 +292,11 @@ const TestPage = () => {
       // Send email to coach
       if (data.coach_email) {
         try {
+          console.log('Sending email to coach:', data.coach_email);
           const response = await fetch(`${process.env.REACT_APP_API_URL}/email/notification`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}` // If using token auth
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               quizId: sessionId,
@@ -301,7 +307,7 @@ const TestPage = () => {
           });
           
           if (!response.ok) {
-            console.warn('Failed to send coach notification');
+            console.warn('Failed to send coach notification', await response.text());
           } else {
             console.log('Coach notification sent successfully');
           }
@@ -313,9 +319,11 @@ const TestPage = () => {
       // Now navigate to results page
       navigate(`/results/grid/${sessionId}`);
     } catch (err) {
-      console.error('Error calculating results:', err);
-      // Still navigate to results page - it will recalculate if needed
+      console.error('Error during quiz completion:', err);
+      // Still navigate to results page
       navigate(`/results/grid/${sessionId}`);
+    } finally {
+      setSubmitting(false);
     }
   };
   
@@ -350,6 +358,22 @@ const TestPage = () => {
   
   if (loading) {
     return <Loading fullScreen />;
+  }
+  
+  if (submitting) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
+        <div className="text-center p-6 bg-white rounded-lg shadow-md">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg font-medium text-gray-700">
+            {language === 'ru' ? 'Обработка результатов...' : 'Нәтижелерді өңдеу...'}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            {language === 'ru' ? 'Пожалуйста, не закрывайте страницу' : 'Бетті жаппаңыз'}
+          </p>
+        </div>
+      </div>
+    );
   }
   
   if (error) {

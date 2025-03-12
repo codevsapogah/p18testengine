@@ -112,13 +112,13 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     const green = [22, 163, 74];   // #16A34A - low
     const red = [220, 38, 38];     // #DC2626 - high
     // eslint-disable-next-line no-unused-vars
-    const blue = [63, 86, 217];    // Royal blue
+    const purple = [107, 70, 193]; // #6B46C1 - primary brand color (replacing blue)
     const lightBlue = [219, 234, 254]; // bg-blue-100
     
     // Add logo in header - simpler text-based approach
     try {
       // Use text-based logo instead of image
-      doc.setTextColor(42, 20, 204);
+      doc.setTextColor(107, 70, 193); // #6B46C1
       doc.setFontSize(12);
       doc.setFont('Roboto', 'bold');
       doc.text('P18', margin + 5, margin, { align: 'center' });
@@ -143,7 +143,7 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     
     // Header with user info - adjust height based on content wrapping
     const headerHeight = textWidth > maxWidth ? 55 : 45; // Taller header when text wraps
-    doc.setFillColor(42, 20, 204); // #2a14cc
+    doc.setFillColor(107, 70, 193); // #6B46C1
     doc.rect(0, 0, pageWidth, headerHeight, 'F');
     
     // Initialize content starting position
@@ -381,7 +381,7 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     const logoY = footerY + 8;
     
     // Use text instead of image for footer logo
-    doc.setTextColor(42, 20, 204);
+    doc.setTextColor(107, 70, 193); // #6B46C1
     doc.setFontSize(10);
     doc.setFont('Roboto', 'bold');
     doc.text('P18', pageWidth / 2, footerY + 12, { align: 'center' });

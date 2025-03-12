@@ -48,7 +48,7 @@ const transliterate = (text) => {
 
 // Create a safe filename
 const createSafeFilename = (userData, type) => {
-  if (!userData || !userData.user_name) return `p18_${type}`;
+  if (!userData || !userData.user_name) return `p18_${type}_${Date.now()}.pdf`;
   
   // Transliterate name if it contains Cyrillic
   const hasCyrillic = /[а-яА-ЯёЁәіңғүұқҚӘІҢҒҮҰЇїЎў]/g.test(userData.user_name);
@@ -58,7 +58,7 @@ const createSafeFilename = (userData, type) => {
   const safeName = name.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase();
   
   // Create date part: YYYY-MM-DD
-  const date = new Date(userData.created_at);
+  const date = userData.created_at ? new Date(userData.created_at) : new Date();
   const datePart = [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, '0'),
@@ -66,12 +66,12 @@ const createSafeFilename = (userData, type) => {
   ].join('-');
   
   // Combine parts
-  return `${safeName}_${datePart}_${type}_p18`;
+  return `${safeName}_${datePart}_${type}_p18.pdf`;
 };
 
 // Format date as: day monthName year
 const formatDate = (dateStr, language) => {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr || new Date());
   const day = date.getDate();
   const year = date.getFullYear();
   
@@ -126,7 +126,6 @@ const getProgramName = (id, language) => {
 /**
  * Generate a PDF buffer with grid-style results visualization
  * @param {Object} userData - User data object
- * @param {Array} sortedPrograms - Programs data with scores
  * @param {string} language - 'ru' or 'kz'
  * @param {string} id - Quiz ID
  * @param {string} baseUrl - Base URL for permalinks
@@ -134,10 +133,16 @@ const getProgramName = (id, language) => {
  */
 const generateGridPDF = (userData, language, id, baseUrl) => {
   try {
-    console.log('Generating Grid PDF...');
+    console.log('[PDF] Starting PDF generation with proper fonts and formatting');
     
-    if (!userData || !userData.calculated_results) {
-      throw new Error('No results available');
+    if (!userData) {
+      console.error('[PDF] userData is null or undefined');
+      throw new Error('No user data available');
+    }
+    
+    if (!userData.calculated_results) {
+      console.error('[PDF] calculated_results is missing in userData');
+      throw new Error('No calculated results available');
     }
 
     // Convert results into programs array (without sorting for all results)
@@ -152,12 +157,16 @@ const generateGridPDF = (userData, language, id, baseUrl) => {
       };
     });
     
+    console.log(`[PDF] Generated programsArray with ${programsArray.length} items`);
+    
     // Create a sorted copy just for the top scores section
     const topScores = [...programsArray].sort((a, b) => b.score - a.score).slice(0, 5);
 
-    // Create filename using the same function as gridpdf.js
+    // Create filename
     const filename = createSafeFilename(userData, 'grid');
+    console.log(`[PDF] Using filename: ${filename}`);
 
+    // Create PDF document
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -167,131 +176,121 @@ const generateGridPDF = (userData, language, id, baseUrl) => {
       encoding: 'UTF-8'
     });
     
-    // Load fonts from local files
+    // Try to load fonts
     let fontLoaded = false;
+    let fontFamily = 'helvetica';
+    
     try {
       const fontsDir = path.join(__dirname, '../fonts');
+      console.log(`[PDF] Looking for fonts in directory: ${fontsDir}`);
       
-      // Check if Roboto font files exist
-      const robotoRegularPath = path.join(fontsDir, 'Roboto-Regular.ttf');
-      const robotoBoldPath = path.join(fontsDir, 'Roboto-Bold.ttf');
+      // Check if directory exists
+      if (!fs.existsSync(fontsDir)) {
+        console.warn(`[PDF] Fonts directory does not exist: ${fontsDir}`);
+        fs.mkdirSync(fontsDir, { recursive: true });
+        console.log(`[PDF] Created fonts directory: ${fontsDir}`);
+      }
       
-      if (fs.existsSync(robotoRegularPath)) {
-        const robotoRegularFont = fs.readFileSync(robotoRegularPath, { encoding: 'base64' });
-        doc.addFileToVFS('Roboto-Regular.ttf', robotoRegularFont);
+      // We'll use either Roboto or NotoSans fonts if available
+      let regularPath, boldPath;
+      
+      // Try Roboto first
+      regularPath = path.join(fontsDir, 'Roboto-Regular.ttf');
+      boldPath = path.join(fontsDir, 'Roboto-Bold.ttf');
+      
+      if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
+        console.log('[PDF] Using Roboto fonts');
+        
+        const regularFont = fs.readFileSync(regularPath, { encoding: 'base64' });
+        const boldFont = fs.readFileSync(boldPath, { encoding: 'base64' });
+        
+        doc.addFileToVFS('Roboto-Regular.ttf', regularFont);
         doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
         
-        if (fs.existsSync(robotoBoldPath)) {
-          const robotoBoldFont = fs.readFileSync(robotoBoldPath, { encoding: 'base64' });
-          doc.addFileToVFS('Roboto-Bold.ttf', robotoBoldFont);
-          doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-        }
+        doc.addFileToVFS('Roboto-Bold.ttf', boldFont);
+        doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
         
-        // Set default font to Roboto if available
-        doc.setFont('Roboto');
+        fontFamily = 'Roboto';
         fontLoaded = true;
-        console.log('Using Roboto fonts from local files');
       } else {
-        // Fallback to helvetica if Roboto is not available
-        console.log('Roboto fonts not found, using helvetica');
-        doc.setFont('helvetica');
+        // Try NotoSans as backup
+        regularPath = path.join(fontsDir, 'NotoSans-Regular.ttf');
+        boldPath = path.join(fontsDir, 'NotoSans-Bold.ttf');
+        
+        if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
+          console.log('[PDF] Using NotoSans fonts');
+          
+          const regularFont = fs.readFileSync(regularPath, { encoding: 'base64' });
+          const boldFont = fs.readFileSync(boldPath, { encoding: 'base64' });
+          
+          doc.addFileToVFS('NotoSans-Regular.ttf', regularFont);
+          doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+          
+          doc.addFileToVFS('NotoSans-Bold.ttf', boldFont);
+          doc.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+          
+          fontFamily = 'NotoSans';
+          fontLoaded = true;
+        } else {
+          console.warn('[PDF] No custom fonts found, using helvetica');
+        }
       }
     } catch (fontError) {
-      console.warn('Error loading fonts:', fontError);
-      // Fallback to helvetica
-      doc.setFont('helvetica');
+      console.error('[PDF] Error loading fonts:', fontError);
+      // Continue with helvetica
     }
     
-    // Store the font name to use throughout the document
-    const fontFamily = fontLoaded ? 'Roboto' : 'helvetica';
+    // Set the font
+    doc.setFont(fontFamily);
+    console.log(`[PDF] Using font family: ${fontFamily}`);
     
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Colors from web version
+    // Colors
     const orange = [255, 97, 0];   // #FF6100 - elevated
     const yellow = [255, 217, 0];  // #FFD900 - medium
     const green = [22, 163, 74];   // #16A34A - low
     const red = [220, 38, 38];     // #DC2626 - high
-    const blue = [42, 20, 204];    // #2a14cc - Royal blue
+    const purple = [107, 70, 193]; // #6B46C1 - primary brand color (replacing blue)
     const lightBlue = [219, 234, 254]; // bg-blue-100
     
-    // Add logo in header - simpler text-based approach
-    try {
-      doc.setTextColor(blue[0], blue[1], blue[2]);
-      doc.setFontSize(12);
-      doc.setFont(fontFamily, 'bold');
-      doc.text('P18', margin + 5, margin, { align: 'center' });
-      doc.setTextColor(255, 255, 255); // Reset text color
-    } catch (logoError) {
-      console.warn('Logo text error:', logoError);
-    }
+    // Header with user info
+    doc.setFillColor(purple[0], purple[1], purple[2]); // #6B46C1
+    doc.rect(0, 0, pageWidth, 45, 'F');
     
-    // Name and test info
+    // Header text - user name and title
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
+    doc.setFontSize(18);
     doc.setFont(fontFamily, 'bold');
+    
+    // Safe headers for different languages
     const headerText = language === 'ru' 
-      ? `${userData.user_name}, вот ваши результаты теста P18`
-      : `${userData.user_name}, сіздің P18 тестінің нәтижелері`;
+      ? `Результаты теста P18: ${userData.user_name || 'Пользователь'}`
+      : `P18 тестінің нәтижелері: ${userData.user_name || 'Қолданушы'}`;
        
-    // Check if text is too long for the page width and wrap if needed
-    const maxWidth = pageWidth - (margin * 2);
-    const textWidth = doc.getTextWidth(headerText);
-    
-    // Header with user info - adjust height based on content wrapping
-    const headerHeight = textWidth > maxWidth ? 55 : 45; // Taller header when text wraps
-    doc.setFillColor(blue[0], blue[1], blue[2]); // #2a14cc
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
-    
-    // Initialize content starting position
-    let currentY;
-    
-    if (textWidth > maxWidth) {
-      // Split the text into name and message parts
-      const namePart = userData.user_name;
-      const messagePart = language === 'ru' 
-        ? "вот ваши результаты теста P18"
-        : "сіздің P18 тестінің нәтижелері";
-         
-      // Write name on first line
-      doc.text(namePart, margin, 15);
-      // Write message on second line
-      doc.text(messagePart, margin, 25);
-      
-      // Adjust content start position for wrapped header
-      currentY = 75;
-    } else {
-      // Original single line
-      doc.text(headerText, margin, 15);
-      
-      // Original content start position
-      currentY = 65;
-    }
+    doc.text(headerText, margin, 20);
     
     // User info in header
     doc.setFontSize(12);
     doc.setFont(fontFamily, 'normal');
     
-    // Date - adjust Y position based on whether header was wrapped
-    const dateY = textWidth > maxWidth ? 35 : 25;
+    // Date
     const date = formatDate(userData.created_at, language);
-    doc.text(date, margin, dateY);
+    doc.text(date, margin, 30);
     
-    // User email - adjust Y position
-    const emailY = textWidth > maxWidth ? 42 : 32;
-    doc.text(`Email: ${userData.user_email}`, margin, emailY);
-    
-    // Coach email if exists - adjust Y position
-    if (userData.coach_email) {
-      const coachY = textWidth > maxWidth ? 49 : 39;
-      doc.text(`Коуч: ${userData.coach_email}`, margin, coachY);
+    // User email
+    if (userData.user_email) {
+      doc.text(`Email: ${userData.user_email}`, margin, 38);
     }
     
+    // Content starts after header
+    let currentY = 60;
+    
     // Title - High Results
-    doc.setFontSize(20);
+    doc.setFontSize(16);
     doc.setFont(fontFamily, 'bold');
     doc.setTextColor(44, 54, 78);
     doc.text(pdfTranslations.title[language], pageWidth / 2, currentY, { align: 'center' });
@@ -326,166 +325,80 @@ const generateGridPDF = (userData, language, id, baseUrl) => {
       doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
       doc.roundedRect(x, currentY, cardWidth, cardHeight, 3, 3, 'F');
       
-      doc.setFontSize(30);
+      doc.setFontSize(20);
       doc.setTextColor(textColor[0], textColor[1], textColor[2]);
       doc.setFont(fontFamily, 'normal');
-      doc.text(`${program.score}%`, x + cardWidth/2, currentY + (cardHeight/2) + 2, { align: 'center' });
+      doc.text(`${program.score}%`, x + cardWidth/2, currentY + (cardHeight/2) - 5, { align: 'center' });
       
       doc.setFontSize(8);
       doc.setFont(fontFamily, 'normal');
-      let progName = program[language];
-      const maxWidth = cardWidth - 4;
       
-      // Handle long program names
-      const words = progName.split(' ');
-      let lines = [];
-      let currentLine = words[0];
+      // Get program name in current language
+      const progName = program[language] || `Program ${program.id}`;
       
-      for (let i = 1; i < words.length; i++) {
-        const testLine = `${currentLine} ${words[i]}`;
-        if (doc.getTextWidth(testLine) <= maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = words[i];
-        }
-      }
-      lines.push(currentLine);
-
-      const lineHeight = 3;
-      let textY = currentY + cardHeight/2 + 8;
-
-      lines.forEach(line => {
-        doc.text(line, x + cardWidth/2, textY, { align: 'center' });
-        textY += lineHeight;
-      });
+      // Handle long program names with simple wrapping
+      const wrappedText = doc.splitTextToSize(progName, cardWidth - 4);
+      const textY = currentY + cardHeight/2 + 5;
+      
+      doc.text(wrappedText, x + cardWidth/2, textY, { align: 'center' });
     });
 
     currentY += cardHeight + 20;
 
     // All Results Title
-    doc.setFontSize(20);
+    doc.setFontSize(16);
     doc.setFont(fontFamily, 'bold');
     doc.setTextColor(44, 54, 78);
     doc.text(pdfTranslations.allResults[language], pageWidth / 2, currentY, { align: 'center' });
     
     currentY += 15;
 
-    // All Results Grid - using original order, not sorted
-    const gridColumns = 6;
-    const smallCardWidth = (contentWidth - ((gridColumns - 1) * 4)) / gridColumns;
-    const smallCardHeight = smallCardWidth;
-    let gridX = margin;
-    let gridY = currentY;
-
-    programsArray.forEach((program, index) => {
-      if (index > 0 && index % gridColumns === 0) {
-        gridX = margin;
-        gridY += smallCardHeight + 4;
-      }
-
-      // Get level and colors based on score
-      const level = getScoreLevel(program.score);
-      let bgColor, textColor;
-      
-      if (level === 'high') {
-        bgColor = red;
-        textColor = [255, 255, 255];
-      } else if (level === 'elevated') {
-        bgColor = orange;
-        textColor = [255, 255, 255];
-      } else if (level === 'medium') {
-        bgColor = yellow;
-        textColor = [0, 0, 0];
-      } else { // low
-        bgColor = green;
-        textColor = [255, 255, 255];
-      }
-
-      doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
-      doc.roundedRect(gridX, gridY, smallCardWidth, smallCardHeight, 3, 3, 'F');
-      
-      doc.setFontSize(22);
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      doc.setFont(fontFamily, 'normal');
-      doc.text(`${program.score}%`, gridX + smallCardWidth/2, gridY + (smallCardHeight/2) + 1, { align: 'center' });
-      
-      doc.setFontSize(7);
-      doc.setFont(fontFamily, 'normal');
-      let progName = program[language];
-      const maxWidth = smallCardWidth - 4;
-      
-      // Handle long program names
-      const words = progName.split(' ');
-      let lines = [];
-      let currentLine = words[0];
-      
-      for (let i = 1; i < words.length; i++) {
-        const testLine = `${currentLine} ${words[i]}`;
-        if (doc.getTextWidth(testLine) <= maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = words[i];
-        }
-      }
-      lines.push(currentLine);
-
-      const lineHeight = 2.5;
-      let textY = gridY + smallCardHeight/2 + 5;
-
-      lines.forEach(line => {
-        doc.text(line, gridX + smallCardWidth/2, textY, { align: 'center' });
-        textY += lineHeight;
-      });
-
-      gridX += smallCardWidth + 4;
+    // Add results table instead of grid for reliability
+    doc.autoTable({
+      startY: currentY,
+      head: [['Name', 'Score']],
+      body: programsArray.map(p => [
+        p[language], 
+        `${p.score}%`
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [107, 70, 193], textColor: [255, 255, 255] }
     });
-
+    
     // Footer with links
     const footerY = pageHeight - 25;
     
     // Add line break above permalink
-    doc.setDrawColor(229, 231, 235);
+    doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
     doc.line(margin, footerY - 8, pageWidth - margin, footerY - 8);
     
-    // Results link with light blue background
+    // Results link 
     const resultUrl = `${baseUrl}/results/grid/${id}?lang=${language}`;
     const linkText = `${pdfTranslations.permalink[language]} ${resultUrl}`;
     
-    // Center the blue box horizontally
-    const boxWidth = Math.min(pageWidth - 40, 180);
-    const boxHeight = 12;
-    const boxX = (pageWidth - boxWidth) / 2;
-    const boxY = footerY - 4;
-    
-    // Draw light blue background
-    doc.setFillColor(lightBlue[0], lightBlue[1], lightBlue[2]);
-    doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 2, 2, 'F');
-    
-    // Draw link text centered with two line breaks before
+    // Draw link text
     doc.setTextColor(44, 54, 78);
     doc.setFontSize(9);
-    doc.text(linkText, pageWidth / 2, footerY + 3, { align: 'center' });
+    doc.text(linkText, pageWidth / 2, footerY, { align: 'center' });
     
     // Add P18 logo in footer
-    doc.setTextColor(blue[0], blue[1], blue[2]);
+    doc.setTextColor(purple[0], purple[1], purple[2]);
     doc.setFontSize(10);
     doc.setFont(fontFamily, 'bold');
-    doc.text('P18', pageWidth / 2, footerY + 12, { align: 'center' });
-    // Add clickable link to the P18 logo
-    const logoHeight = 8;
-    const logoWidth = 15;
-    const logoX = (pageWidth - logoWidth) / 2;
-    const logoY = footerY + 8;
-    doc.link(logoX, logoY, logoWidth, logoHeight, { url: 'https://p18.kz' });
-    doc.setTextColor(44, 54, 78); // Reset text color
-
-    // Return PDF as buffer
-    return Buffer.from(doc.output('arraybuffer'));
+    doc.text('P18', pageWidth / 2, footerY + 8, { align: 'center' });
+    
+    // Create buffer with proper error handling
+    try {
+      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+      console.log(`[PDF] PDF generated successfully, buffer size: ${pdfBuffer.length} bytes`);
+      return pdfBuffer;
+    } catch (bufferError) {
+      console.error('[PDF] Error creating buffer:', bufferError);
+      throw new Error('Failed to create PDF buffer');
+    }
   } catch (error) {
-    console.error('Grid PDF generation error:', error);
+    console.error('[PDF] Error generating grid PDF:', error);
     throw error;
   }
 };

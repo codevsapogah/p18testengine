@@ -7,8 +7,10 @@ const transporter = nodemailer.createTransport({
   secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER || 'hello@p18.kz',
-    pass: process.env.SMTP_PASSWORD || 'your-password',
+    pass: process.env.SMTP_PASSWORD || 'jopRof-0kutqy-tidkiq',
   },
+  debug: true, // Show debug output
+  logger: true // Log information about the mail
 });
 
 // Test the SMTP connection on server startup
@@ -32,6 +34,8 @@ const transporter = nodemailer.createTransport({
  * @returns {Promise} - Email send result
  */
 const sendEmail = async (options) => {
+  console.log(`Sending email to ${options.to} with subject: ${options.subject}`);
+  
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'P18 Platform'}" <${process.env.EMAIL_FROM || 'hello@p18.kz'}>`,
     to: options.to,
@@ -41,7 +45,14 @@ const sendEmail = async (options) => {
     attachments: options.attachments || [],
   };
 
-  return transporter.sendMail(mailOptions);
+  try {
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`Email sent successfully to ${options.to}, ID: ${result.messageId}`);
+    return result;
+  } catch (error) {
+    console.error(`Failed to send email to ${options.to}:`, error);
+    throw error;
+  }
 };
 
 // Email translations
@@ -148,29 +159,24 @@ const sendQuizCompletionEmail = async (options) => {
   // Set up attachments if PDF buffer is provided
   const attachments = [];
   if (options.pdfBuffer) {
-    // Import the createSafeFilename function if available
-    let filename = options.fileName;
-    if (!filename) {
-      try {
-        // Try to generate a proper filename based on user data
-        const { createSafeFilename } = require('./pdfGenerator');
-        filename = `${createSafeFilename({
-          user_name: options.name, 
-          created_at: new Date()
-        }, 'grid')}.pdf`;
-      } catch (error) {
-        // Fallback to simple filename if createSafeFilename isn't available
-        console.warn('Could not generate safe filename:', error);
-        filename = `P18_Results_${options.quizId || new Date().getTime()}.pdf`;
-      }
-    }
+    console.log(`[Email] Attaching PDF with buffer size: ${options.pdfBuffer.length} bytes`);
+    
+    // Generate a simple filename
+    const filename = `P18_Results_${options.quizId || new Date().getTime()}.pdf`;
     
     attachments.push({
       filename: filename,
       content: options.pdfBuffer,
       contentType: 'application/pdf'
     });
+    
+    console.log(`[Email] PDF attachment created with filename: ${filename}`);
+  } else {
+    console.log('[Email] No PDF buffer provided, sending email without attachment');
   }
+  
+  // Log the attachments array
+  console.log(`[Email] Email will be sent with ${attachments.length} attachments`);
   
   return sendEmail({
     to: options.to,
@@ -246,29 +252,24 @@ const sendCoachNotificationEmail = async (options) => {
   // Set up attachments if PDF buffer is provided
   const attachments = [];
   if (options.pdfBuffer) {
-    // Import the createSafeFilename function if available
-    let filename = options.fileName;
-    if (!filename) {
-      try {
-        // Try to generate a proper filename based on user and client data
-        const { createSafeFilename } = require('./pdfGenerator');
-        filename = `${createSafeFilename({
-          user_name: options.clientName, 
-          created_at: new Date()
-        }, 'grid')}.pdf`;
-      } catch (error) {
-        // Fallback to simple filename if createSafeFilename isn't available
-        console.warn('Could not generate safe filename for coach email:', error);
-        filename = `P18_Results_${options.clientName.replace(/\s+/g, '_')}.pdf`;
-      }
-    }
+    console.log(`[Email] Attaching PDF to coach email, buffer size: ${options.pdfBuffer.length} bytes`);
+    
+    // Generate a simple filename
+    const filename = `P18_Results_${options.clientName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
     
     attachments.push({
       filename: filename,
       content: options.pdfBuffer,
       contentType: 'application/pdf'
     });
+    
+    console.log(`[Email] Coach PDF attachment created with filename: ${filename}`);
+  } else {
+    console.log('[Email] No PDF buffer provided for coach email, sending without attachment');
   }
+  
+  // Log the attachments array
+  console.log(`[Email] Coach email will be sent with ${attachments.length} attachments`);
   
   return sendEmail({
     to: options.to,

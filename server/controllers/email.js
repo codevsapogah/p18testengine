@@ -7,6 +7,8 @@ exports.sendCompletionEmail = async (req, res) => {
   try {
     const { quizId, clientEmail, clientName, language } = req.body;
     
+    console.log(`Sending completion email for quiz ${quizId} to ${clientEmail}`);
+    
     if (!quizId || !clientEmail || !clientName) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
@@ -26,20 +28,28 @@ exports.sendCompletionEmail = async (req, res) => {
       return res.status(500).json({ message: 'Failed to fetch quiz data for PDF' });
     }
     
+    console.log(`Quiz data retrieved for PDF generation:`, {
+      id: quizData.id,
+      created_at: quizData.created_at,
+      hasCalculatedResults: !!quizData.calculated_results,
+      calculatedResultsLength: quizData.calculated_results ? Object.keys(quizData.calculated_results).length : 0
+    });
+    
     // Generate PDF
     let pdfBuffer = null;
     try {
       // Base URL for permalinks in the PDF
       const baseUrl = process.env.CLIENT_URL || 'https://p18.kz';
+      console.log(`Generating PDF with baseUrl: ${baseUrl}, language: ${language || 'ru'}, quizId: ${quizId}`);
       pdfBuffer = await generateGridPDF(quizData, language || 'ru', quizId, baseUrl);
-      console.log('PDF generated successfully');
+      console.log(`PDF generated successfully, buffer size: ${pdfBuffer ? pdfBuffer.length : 0} bytes`);
     } catch (pdfError) {
       console.error('Error generating PDF:', pdfError);
       // Continue without PDF if generation fails
     }
     
     // Send the email with PDF attachment
-    await sendQuizCompletionEmail({
+    const emailSendResult = await sendQuizCompletionEmail({
       to: clientEmail,
       name: clientName,
       quizId,
@@ -49,15 +59,14 @@ exports.sendCompletionEmail = async (req, res) => {
       fileName: null // Let the email utility determine filename based on data
     });
     
-    // Update the database to indicate email was sent
-    const { error } = await supabase
-      .from('quiz_results')
-      .update({ email_sent: true, email_sent_at: new Date() })
-      .eq('id', quizId);
-      
-    if (error) throw error;
+    console.log(`Email sent successfully with message ID: ${emailSendResult.messageId}`);
+    console.log(`PDF was ${pdfBuffer ? 'attached' : 'not attached'} to the email`);
     
-    return res.status(200).json({ message: 'Completion email sent successfully' });
+    res.status(200).json({
+      message: 'Email sent successfully',
+      pdfIncluded: !!pdfBuffer,
+      messageId: emailSendResult.messageId
+    });
   } catch (error) {
     console.error('Error sending completion email:', error);
     return res.status(500).json({ message: 'Failed to send completion email' });
