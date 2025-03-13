@@ -70,9 +70,9 @@ const formatDate = (dateStr, language) => {
 
 // Get score level based on score value - match logic from data/programs.js
 const getScoreLevel = (score) => {
-  if (score > 80) return 'high';       // red
-  if (score >= 60) return 'elevated';  // orange
-  if (score >= 40) return 'medium';    // yellow
+  if (score >= 75) return 'high';       // red
+  if (score >= 50) return 'elevated';  // orange
+  if (score >= 25) return 'medium';    // yellow
   return 'low';                        // green
 };
 
@@ -230,40 +230,41 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
       doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
       doc.roundedRect(x, currentY, cardWidth, cardHeight, 3, 3, 'F');
       
+      // Calculate center positions
+      const centerX = x + cardWidth/2;
+      const centerY = currentY + cardHeight/2;
+      
+      // Draw percentage
       doc.setFontSize(30);
       doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      doc.setFont('Roboto', 'normal');
-      doc.text(`${program.score}%`, x + cardWidth/2, currentY + (cardHeight/2) + 2, { align: 'center' });
+      doc.setFont('Roboto', 'bold');
+      doc.text(`${Math.round(program.score)}%`, centerX, currentY + cardHeight * 0.4, { align: 'center' });
       
+      // Draw level text pill
       doc.setFontSize(8);
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
       doc.setFont('Roboto', 'normal');
-      let progName = program[language];
+      const levelText = levelTranslations[level][language];
+      const levelTextWidth = doc.getTextWidth(levelText) + 8; // Reduced padding
+      const levelTextHeight = 2.5; // Smaller height
+      const levelTextX = x + (cardWidth - levelTextWidth) / 2;
+      const levelTextY = currentY + cardHeight * 0.55;
+      
+      // Draw border around level text matching text color - less rounded corners and smaller
+      doc.setDrawColor(textColor[0], textColor[1], textColor[2]);
+      doc.setLineWidth(0.2); // Thinner line
+      doc.roundedRect(levelTextX, levelTextY - 1.5, levelTextWidth, levelTextHeight + 2, 1.5, 1.5, 'S');
+      // Center text vertically in pill - adjusted to have equal space above and below
+      doc.text(levelText, centerX, levelTextY + 1.4, { align: 'center' });
+      
+      // Draw program name at bottom with text wrapping
+      doc.setFontSize(7);
+      doc.setFont('Roboto', 'normal');
+      let progName = program[language] || '';
+      // Wrap text if too long
       const maxWidth = cardWidth - 4;
-      
-      const words = progName.split(' ');
-      let lines = [];
-      let currentLine = words[0];
-      
-      for (let i = 1; i < words.length; i++) {
-        const testLine = `${currentLine} ${words[i]}`;
-        if (doc.getTextWidth(testLine) <= maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = words[i];
-        }
-      }
-      lines.push(currentLine);
-
-      const lineHeight = 3;
-      // eslint-disable-next-line no-unused-vars
-      const totalTextHeight = lines.length * lineHeight;
-      let textY = currentY + cardHeight/2 + 8;
-
-      lines.forEach(line => {
-        doc.text(line, x + cardWidth/2, textY, { align: 'center' });
-        textY += lineHeight;
-      });
+      const wrappedProgName = doc.splitTextToSize(progName, maxWidth);
+      doc.text(wrappedProgName, centerX, currentY + cardHeight * 0.8, { align: 'center' });
     });
 
     currentY += cardHeight + 20;
@@ -310,40 +311,41 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
       doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
       doc.roundedRect(gridX, gridY, smallCardWidth, smallCardHeight, 3, 3, 'F');
       
+      // Calculate center positions
+      const centerX = gridX + smallCardWidth/2;
+      const centerY = gridY + smallCardHeight/2;
+      
+      // Draw percentage
       doc.setFontSize(22);
       doc.setTextColor(textColor[0], textColor[1], textColor[2]);
       doc.setFont('Roboto', 'normal');
-      doc.text(`${program.score}%`, gridX + smallCardWidth/2, gridY + (smallCardHeight/2) + 1, { align: 'center' });
+      doc.text(`${Math.round(program.score)}%`, centerX, gridY + smallCardHeight * 0.4, { align: 'center' });
       
+      // Draw level text pill
+      doc.setFontSize(6);
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.setFont('Roboto', 'normal');
+      const levelText = levelTranslations[level][language];
+      const levelTextWidth = doc.getTextWidth(levelText) + 6; // Reduced padding
+      const levelTextHeight = 1.5; // Smaller height
+      const levelTextX = gridX + (smallCardWidth - levelTextWidth) / 2;
+      const levelTextY = gridY + smallCardHeight * 0.55;
+      
+      // Draw border around level text matching text color - less rounded corners and smaller
+      doc.setDrawColor(textColor[0], textColor[1], textColor[2]);
+      doc.setLineWidth(0.2); // Thinner line
+      doc.roundedRect(levelTextX, levelTextY - 1, levelTextWidth, levelTextHeight + 2, 1, 1, 'S');
+      // Center text vertically in pill - adjusted to have equal space above and below
+      doc.text(levelText, centerX, levelTextY + 1.4, { align: 'center' });
+      
+      // Draw program name at bottom with text wrapping
       doc.setFontSize(7);
       doc.setFont('Roboto', 'normal');
-      let progName = program[language];
+      let progName = program[language] || '';
+      // Wrap text if too long
       const maxWidth = smallCardWidth - 4;
-      
-      const words = progName.split(' ');
-      let lines = [];
-      let currentLine = words[0];
-      
-      for (let i = 1; i < words.length; i++) {
-        const testLine = `${currentLine} ${words[i]}`;
-        if (doc.getTextWidth(testLine) <= maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = words[i];
-        }
-      }
-      lines.push(currentLine);
-
-      const lineHeight = 2.5;
-      // eslint-disable-next-line no-unused-vars
-      const totalTextHeight = lines.length * lineHeight;
-      let textY = gridY + smallCardHeight/2 + 5;
-
-      lines.forEach(line => {
-        doc.text(line, gridX + smallCardWidth/2, textY, { align: 'center' });
-        textY += lineHeight;
-      });
+      const wrappedProgName = doc.splitTextToSize(progName, maxWidth);
+      doc.text(wrappedProgName, centerX, gridY + smallCardHeight * 0.8, { align: 'center' });
 
       gridX += smallCardWidth + 4;
     });

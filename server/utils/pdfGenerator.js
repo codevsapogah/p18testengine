@@ -3,27 +3,27 @@ require('jspdf-autotable');
 const fs = require('fs');
 const path = require('path');
 
-// Program names mapping
-const programNames = {
-  1: { ru: 'Эмоциональный голод', kz: 'Эмоционалды аштық' },
-  2: { ru: 'Покинутость', kz: 'Тастанды' },
-  3: { ru: 'Использование', kz: 'Пайдалану' },
-  4: { ru: 'Отверженность', kz: 'Қабылданбау' },
-  5: { ru: 'Поломанность', kz: 'Сынық' },
-  6: { ru: 'Провал', kz: 'Сәтсіздік' },
-  7: { ru: 'Беспомощность', kz: 'Дәрменсіздік' },
-  8: { ru: 'Пророчество', kz: 'Болжам' },
-  9: { ru: 'Растворение', kz: 'Басқаға еру' },
-  10: { ru: 'Подчинение', kz: 'Бағыну' },
-  11: { ru: 'Самопожертвование', kz: 'Өзін құрбан ету' },
-  12: { ru: 'Эмоциональная ингибиция', kz: 'Эмоцияны ұстау' },
-  13: { ru: 'Перфекционизм', kz: 'Перфекционизм' },
-  14: { ru: 'Надменность', kz: 'Менмендік' },
-  15: { ru: 'Отсутствие дисциплины', kz: 'Дисциплина жоқтығы' },
-  16: { ru: 'Поиск признания', kz: 'Мойындалуды іздеу' },
-  17: { ru: 'Пессимизм', kz: 'Пессимизм' },
-  18: { ru: 'Инструкции', kz: 'Ережелер' }
-};
+// Program names mapping from programs.js
+const programs = [
+  { id: 1, ru: 'Эмоциональный голод', kz: 'Эмоционалды аштық' },
+  { id: 2, ru: 'Покинутость', kz: 'Тастанды' },
+  { id: 3, ru: 'Использование', kz: 'Пайдалану' },
+  { id: 4, ru: 'Отверженность', kz: 'Қабылданбау' },
+  { id: 5, ru: 'Поломанность', kz: 'Сынық' },
+  { id: 6, ru: 'Провал', kz: 'Сәтсіздік' },
+  { id: 7, ru: 'Беспомощность', kz: 'Дәрменсіздік' },
+  { id: 8, ru: 'Пророчество', kz: 'Болжам' },
+  { id: 9, ru: 'Растворение', kz: 'Басқаға еру' },
+  { id: 10, ru: 'Подчинение', kz: 'Бағыну' },
+  { id: 11, ru: 'Самопожертвование', kz: 'Өзін құрбан ету' },
+  { id: 12, ru: 'Эмоциональная ингибиция', kz: 'Эмоцияны ұстау' },
+  { id: 13, ru: 'Перфекционизм', kz: 'Перфекционизм' },
+  { id: 14, ru: 'Надменность', kz: 'Менмендік' },
+  { id: 15, ru: 'Отсутствие дисциплины', kz: 'Дисциплина жоқтығы' },
+  { id: 16, ru: 'Поиск признания', kz: 'Мойындалуды іздеу' },
+  { id: 17, ru: 'Пессимизм', kz: 'Пессимизм' },
+  { id: 18, ru: 'Инструкции', kz: 'Ережелер' }
+];
 
 // Transliterate Cyrillic to Latin
 const transliterate = (text) => {
@@ -48,7 +48,7 @@ const transliterate = (text) => {
 
 // Create a safe filename
 const createSafeFilename = (userData, type) => {
-  if (!userData || !userData.user_name) return `p18_${type}_${Date.now()}.pdf`;
+  if (!userData || !userData.user_name) return `p18_${type}`;
   
   // Transliterate name if it contains Cyrillic
   const hasCyrillic = /[а-яА-ЯёЁәіңғүұқҚӘІҢҒҮҰЇїЎў]/g.test(userData.user_name);
@@ -58,7 +58,7 @@ const createSafeFilename = (userData, type) => {
   const safeName = name.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase();
   
   // Create date part: YYYY-MM-DD
-  const date = userData.created_at ? new Date(userData.created_at) : new Date();
+  const date = new Date(userData.created_at);
   const datePart = [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, '0'),
@@ -66,12 +66,12 @@ const createSafeFilename = (userData, type) => {
   ].join('-');
   
   // Combine parts
-  return `${safeName}_${datePart}_${type}_p18.pdf`;
+  return `${safeName}_${datePart}_${type}_p18`;
 };
 
 // Format date as: day monthName year
 const formatDate = (dateStr, language) => {
-  const date = new Date(dateStr || new Date());
+  const date = new Date(dateStr);
   const day = date.getDate();
   const year = date.getFullYear();
   
@@ -93,14 +93,14 @@ const formatDate = (dateStr, language) => {
 
 // Get score level based on score value
 const getScoreLevel = (score) => {
-  if (score > 80) return 'high';       // red
-  if (score >= 60) return 'elevated';  // orange
-  if (score >= 40) return 'medium';    // yellow
-  return 'low';                        // green
+  if (score >= 75) return 'high';
+  if (score >= 50) return 'elevated';
+  if (score >= 25) return 'medium';
+  return 'low';
 };
 
 // Translations for PDF
-const pdfTranslations = {
+const translations = {
   title: {
     ru: 'Высокие результаты',
     kz: 'Жоғары нәтижелер'
@@ -117,54 +117,33 @@ const pdfTranslations = {
 
 // Get program name by ID
 const getProgramName = (id, language) => {
-  if (programNames[id] && programNames[id][language]) {
-    return programNames[id][language];
-  }
-  return `Program ${id}`;
+  const program = programs.find(p => p.id === id);
+  return program ? program[language] : `Program ${id}`;
 };
 
 /**
  * Generate a PDF buffer with grid-style results visualization
- * @param {Object} userData - User data object
- * @param {string} language - 'ru' or 'kz'
- * @param {string} id - Quiz ID
- * @param {string} baseUrl - Base URL for permalinks
- * @returns {Buffer} - PDF buffer
  */
 const generateGridPDF = (userData, language, id, baseUrl) => {
   try {
-    console.log('[PDF] Starting PDF generation with proper fonts and formatting');
-    
-    if (!userData) {
-      console.error('[PDF] userData is null or undefined');
-      throw new Error('No user data available');
-    }
-    
-    if (!userData.calculated_results) {
-      console.error('[PDF] calculated_results is missing in userData');
-      throw new Error('No calculated results available');
+    if (!userData || !userData.calculated_results) {
+      throw new Error('No results available');
     }
 
-    // Convert results into programs array (without sorting for all results)
-    const programsArray = Object.entries(userData.calculated_results || {}).map(([key, data]) => {
-      // Try to parse the key as a number for program ID
-      const programId = parseInt(key, 10);
+    // Convert results into programs array
+    const programsArray = Object.entries(userData.calculated_results).map(([key, value]) => {
+      const programId = parseInt(key.replace('program_', ''), 10);
       return {
         id: programId,
-        ru: isNaN(programId) ? key : getProgramName(programId, 'ru'),
-        kz: isNaN(programId) ? key : getProgramName(programId, 'kz'),
-        score: Math.round(data.score || 0),
+        ru: getProgramName(programId, 'ru'),
+        kz: getProgramName(programId, 'kz'),
+        score: Math.round(value),
+        category: getScoreLevel(Math.round(value))
       };
     });
-    
-    console.log(`[PDF] Generated programsArray with ${programsArray.length} items`);
-    
-    // Create a sorted copy just for the top scores section
-    const topScores = [...programsArray].sort((a, b) => b.score - a.score).slice(0, 5);
 
     // Create filename
     const filename = createSafeFilename(userData, 'grid');
-    console.log(`[PDF] Using filename: ${filename}`);
 
     // Create PDF document
     const doc = new jsPDF({
@@ -175,230 +154,205 @@ const generateGridPDF = (userData, language, id, baseUrl) => {
       hotfixes: ['px_scaling'],
       encoding: 'UTF-8'
     });
-    
-    // Try to load fonts
-    let fontLoaded = false;
-    let fontFamily = 'helvetica';
-    
-    try {
-      const fontsDir = path.join(__dirname, '../fonts');
-      console.log(`[PDF] Looking for fonts in directory: ${fontsDir}`);
-      
-      // Check if directory exists
-      if (!fs.existsSync(fontsDir)) {
-        console.warn(`[PDF] Fonts directory does not exist: ${fontsDir}`);
-        fs.mkdirSync(fontsDir, { recursive: true });
-        console.log(`[PDF] Created fonts directory: ${fontsDir}`);
-      }
-      
-      // We'll use either Roboto or NotoSans fonts if available
-      let regularPath, boldPath;
-      
-      // Try Roboto first
-      regularPath = path.join(fontsDir, 'Roboto-Regular.ttf');
-      boldPath = path.join(fontsDir, 'Roboto-Bold.ttf');
-      
-      if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
-        console.log('[PDF] Using Roboto fonts');
-        
-        const regularFont = fs.readFileSync(regularPath, { encoding: 'base64' });
-        const boldFont = fs.readFileSync(boldPath, { encoding: 'base64' });
-        
-        doc.addFileToVFS('Roboto-Regular.ttf', regularFont);
-        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-        
-        doc.addFileToVFS('Roboto-Bold.ttf', boldFont);
-        doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-        
-        fontFamily = 'Roboto';
-        fontLoaded = true;
-      } else {
-        // Try NotoSans as backup
-        regularPath = path.join(fontsDir, 'NotoSans-Regular.ttf');
-        boldPath = path.join(fontsDir, 'NotoSans-Bold.ttf');
-        
-        if (fs.existsSync(regularPath) && fs.existsSync(boldPath)) {
-          console.log('[PDF] Using NotoSans fonts');
-          
-          const regularFont = fs.readFileSync(regularPath, { encoding: 'base64' });
-          const boldFont = fs.readFileSync(boldPath, { encoding: 'base64' });
-          
-          doc.addFileToVFS('NotoSans-Regular.ttf', regularFont);
-          doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
-          
-          doc.addFileToVFS('NotoSans-Bold.ttf', boldFont);
-          doc.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
-          
-          fontFamily = 'NotoSans';
-          fontLoaded = true;
-        } else {
-          console.warn('[PDF] No custom fonts found, using helvetica');
-        }
-      }
-    } catch (fontError) {
-      console.error('[PDF] Error loading fonts:', fontError);
-      // Continue with helvetica
-    }
-    
-    // Set the font
+
+    // Set default font to helvetica since we can't load custom fonts in browser
+    const fontFamily = 'helvetica';
     doc.setFont(fontFamily);
-    console.log(`[PDF] Using font family: ${fontFamily}`);
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Colors
-    const orange = [255, 97, 0];   // #FF6100 - elevated
-    const yellow = [255, 217, 0];  // #FFD900 - medium
-    const green = [22, 163, 74];   // #16A34A - low
-    const red = [220, 38, 38];     // #DC2626 - high
-    const purple = [107, 70, 193]; // #6B46C1 - primary brand color (replacing blue)
+    // Colors from web version
+    const categoryColors = {
+      low: [22, 163, 74],      // #16A34A - green
+      medium: [255, 217, 0],   // #FFD900 - yellow
+      elevated: [255, 97, 0],  // #FF6100 - orange
+      high: [220, 38, 38]      // #DC2626 - red
+    };
+    
+    const purple = [107, 70, 193]; // #6B46C1
     const lightBlue = [219, 234, 254]; // bg-blue-100
-    
+
     // Header with user info
-    doc.setFillColor(purple[0], purple[1], purple[2]); // #6B46C1
+    doc.setFillColor(purple[0], purple[1], purple[2]);
     doc.rect(0, 0, pageWidth, 45, 'F');
-    
-    // Header text - user name and title
+
+    // Header text
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
+    doc.setFontSize(24);
     doc.setFont(fontFamily, 'bold');
-    
-    // Safe headers for different languages
     const headerText = language === 'ru' 
-      ? `Результаты теста P18: ${userData.user_name || 'Пользователь'}`
-      : `P18 тестінің нәтижелері: ${userData.user_name || 'Қолданушы'}`;
-       
+      ? `${userData.user_name}, вот ваши результаты теста P18`
+      : `${userData.user_name}, сіздің P18 тестінің нәтижелері`;
     doc.text(headerText, margin, 20);
-    
-    // User info in header
+
+    // User info
     doc.setFontSize(12);
     doc.setFont(fontFamily, 'normal');
-    
-    // Date
-    const date = formatDate(userData.created_at, language);
-    doc.text(date, margin, 30);
-    
-    // User email
-    if (userData.user_email) {
-      doc.text(`Email: ${userData.user_email}`, margin, 38);
+    doc.text(formatDate(userData.created_at, language), margin, 30);
+    doc.text(`Email: ${userData.user_email}`, margin, 38);
+    if (userData.coach_email) {
+      doc.text(`${language === 'ru' ? 'Коуч' : 'Коуч'}: ${userData.coach_email}`, margin, 46);
     }
-    
-    // Content starts after header
+
     let currentY = 60;
-    
-    // Title - High Results
-    doc.setFontSize(16);
+
+    // High Results section
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(20);
     doc.setFont(fontFamily, 'bold');
-    doc.setTextColor(44, 54, 78);
-    doc.text(pdfTranslations.title[language], pageWidth / 2, currentY, { align: 'center' });
+    doc.text(translations.title[language], pageWidth / 2, currentY, { align: 'center' });
     
     currentY += 15;
 
-    // High Scores Grid (top 5 scores)
+    // Top 5 scores grid
+    const topScores = [...programsArray].slice(0, 5);
     const cardWidth = (contentWidth - (4 * 4)) / 5;
     const cardHeight = cardWidth;
 
     topScores.forEach((program, index) => {
       const x = margin + (index * (cardWidth + 4));
       
-      // Get level and colors based on score
-      const level = getScoreLevel(program.score);
-      let bgColor, textColor;
-      
-      if (level === 'high') {
-        bgColor = red;
-        textColor = [255, 255, 255];
-      } else if (level === 'elevated') {
-        bgColor = orange;
-        textColor = [255, 255, 255];
-      } else if (level === 'medium') {
-        bgColor = yellow;
-        textColor = [0, 0, 0];
-      } else { // low
-        bgColor = green;
-        textColor = [255, 255, 255];
-      }
-
-      doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+      // Card background
+      const color = categoryColors[program.category];
+      doc.setFillColor(color[0], color[1], color[2]);
       doc.roundedRect(x, currentY, cardWidth, cardHeight, 3, 3, 'F');
       
-      doc.setFontSize(20);
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      // Calculate center positions
+      const centerX = x + cardWidth/2;
+      const centerY = currentY + cardHeight/2;
+      
+      // Draw percentage
+      doc.setTextColor(program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255);
+      doc.setFontSize(30);
+      doc.setFont(fontFamily, 'bold');
+      doc.text(`${program.score}%`, centerX, currentY + cardHeight * 0.4, { align: 'center' });
+      
+      // Draw level text pill
+      doc.setFontSize(9);
       doc.setFont(fontFamily, 'normal');
-      doc.text(`${program.score}%`, x + cardWidth/2, currentY + (cardHeight/2) - 5, { align: 'center' });
+      const levelText = language === 'ru' ? getCategoryText(program.category, 'ru') : getCategoryText(program.category, 'kz');
+      const levelTextWidth = doc.getTextWidth(levelText) + 8;
+      const levelTextHeight = 2.5;
+      const levelTextX = x + (cardWidth - levelTextWidth) / 2;
+      const levelTextY = currentY + cardHeight * 0.55;
       
-      doc.setFontSize(8);
+      // Draw border around level text matching text color
+      doc.setDrawColor(program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(levelTextX, levelTextY - 1.5, levelTextWidth, levelTextHeight + 2, 1.5, 1.5, 'S');
+      doc.text(levelText, centerX, levelTextY + 1.5, { align: 'center' });
+      
+      // Draw program name at bottom with text wrapping
+      doc.setFontSize(9);
       doc.setFont(fontFamily, 'normal');
-      
-      // Get program name in current language
-      const progName = program[language] || `Program ${program.id}`;
-      
-      // Handle long program names with simple wrapping
-      const wrappedText = doc.splitTextToSize(progName, cardWidth - 4);
-      const textY = currentY + cardHeight/2 + 5;
-      
-      doc.text(wrappedText, x + cardWidth/2, textY, { align: 'center' });
+      const progName = program[language];
+      const maxWidth = cardWidth - 4;
+      const wrappedProgName = doc.splitTextToSize(progName, maxWidth);
+      doc.text(wrappedProgName, centerX, currentY + cardHeight * 0.8, { align: 'center' });
     });
 
     currentY += cardHeight + 20;
 
-    // All Results Title
-    doc.setFontSize(16);
+    // All Results section
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(20);
     doc.setFont(fontFamily, 'bold');
-    doc.setTextColor(44, 54, 78);
-    doc.text(pdfTranslations.allResults[language], pageWidth / 2, currentY, { align: 'center' });
+    doc.text(translations.allResults[language], pageWidth / 2, currentY, { align: 'center' });
     
     currentY += 15;
 
-    // Add results table instead of grid for reliability
-    doc.autoTable({
-      startY: currentY,
-      head: [['Name', 'Score']],
-      body: programsArray.map(p => [
-        p[language], 
-        `${p.score}%`
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: [107, 70, 193], textColor: [255, 255, 255] }
+    // All results grid
+    const gridColumns = 6;
+    const smallCardWidth = (contentWidth - ((gridColumns - 1) * 4)) / gridColumns;
+    const smallCardHeight = smallCardWidth;
+    let gridX = margin;
+    let gridY = currentY;
+
+    programsArray.forEach((program, index) => {
+      if (index > 0 && index % gridColumns === 0) {
+        gridX = margin;
+        gridY += smallCardHeight + 4;
+      }
+
+      // Card background
+      const color = categoryColors[program.category];
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.roundedRect(gridX, gridY, smallCardWidth, smallCardHeight, 3, 3, 'F');
+      
+      // Calculate center positions
+      const centerX = gridX + smallCardWidth/2;
+      const centerY = gridY + smallCardHeight/2;
+      
+      // Draw percentage
+      doc.setTextColor(program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255);
+      doc.setFontSize(22);
+      doc.setFont(fontFamily, 'bold');
+      doc.text(`${program.score}%`, centerX, gridY + smallCardHeight * 0.4, { align: 'center' });
+      
+      // Draw level text pill
+      doc.setFontSize(6);
+      doc.setFont(fontFamily, 'normal');
+      const smallLevelText = language === 'ru' ? getCategoryText(program.category, 'ru') : getCategoryText(program.category, 'kz');
+      const levelTextWidth = doc.getTextWidth(smallLevelText) + 6;
+      const levelTextHeight = 1.5;
+      const levelTextX = gridX + (smallCardWidth - levelTextWidth) / 2;
+      const levelTextY = gridY + smallCardHeight * 0.55;
+      
+      // Draw border around level text matching text color
+      doc.setDrawColor(program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255, program.category === 'medium' ? 0 : 255);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(levelTextX, levelTextY - 1, levelTextWidth, levelTextHeight + 2, 1, 1, 'S');
+      doc.text(smallLevelText, centerX, levelTextY + 1.4, { align: 'center' });
+      
+      // Draw program name at bottom with text wrapping
+      doc.setFontSize(8);
+      doc.setFont(fontFamily, 'normal');
+      const progName = program[language];
+      const maxWidth = smallCardWidth - 4;
+      const wrappedProgName = doc.splitTextToSize(progName, maxWidth);
+      doc.text(wrappedProgName, centerX, gridY + smallCardHeight * 0.8, { align: 'center' });
+
+      gridX += smallCardWidth + 4;
     });
-    
-    // Footer with links
+
+    // Footer
     const footerY = pageHeight - 25;
     
-    // Add line break above permalink
-    doc.setDrawColor(200, 200, 200);
+    // Add line break
+    doc.setDrawColor(229, 231, 235);
     doc.setLineWidth(0.5);
     doc.line(margin, footerY - 8, pageWidth - margin, footerY - 8);
     
-    // Results link 
+    // Results link with light blue background
     const resultUrl = `${baseUrl}/results/grid/${id}?lang=${language}`;
-    const linkText = `${pdfTranslations.permalink[language]} ${resultUrl}`;
+    const linkText = `${translations.permalink[language]} ${resultUrl}`;
     
-    // Draw link text
+    // Draw light blue background
+    const boxWidth = Math.min(pageWidth - 40, 180);
+    const boxHeight = 12;
+    const boxX = (pageWidth - boxWidth) / 2;
+    const boxY = footerY - 4;
+    
+    doc.setFillColor(lightBlue[0], lightBlue[1], lightBlue[2]);
+    doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 2, 2, 'F');
+    
+    // Add permalink text
     doc.setTextColor(44, 54, 78);
     doc.setFontSize(9);
-    doc.text(linkText, pageWidth / 2, footerY, { align: 'center' });
+    doc.text(linkText, pageWidth / 2, footerY + 3, { align: 'center' });
     
-    // Add P18 logo in footer
+    // Add P18 logo
     doc.setTextColor(purple[0], purple[1], purple[2]);
     doc.setFontSize(10);
     doc.setFont(fontFamily, 'bold');
-    doc.text('P18', pageWidth / 2, footerY + 8, { align: 'center' });
-    
-    // Create buffer with proper error handling
-    try {
-      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-      console.log(`[PDF] PDF generated successfully, buffer size: ${pdfBuffer.length} bytes`);
-      return pdfBuffer;
-    } catch (bufferError) {
-      console.error('[PDF] Error creating buffer:', bufferError);
-      throw new Error('Failed to create PDF buffer');
-    }
+    doc.text('P18', pageWidth / 2, footerY + 12, { align: 'center' });
+
+    return Buffer.from(doc.output('arraybuffer'));
   } catch (error) {
-    console.error('[PDF] Error generating grid PDF:', error);
+    console.error('Error generating PDF:', error);
     throw error;
   }
 };

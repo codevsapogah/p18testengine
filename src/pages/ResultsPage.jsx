@@ -191,16 +191,27 @@ const GridViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
               className="aspect-square rounded-lg shadow-md transform hover:scale-105 transition-all duration-200 p-3 flex flex-col relative cursor-pointer"
               style={{ backgroundColor: levelColors[program.level] }}
             >
-              <div className="h-3/5 flex items-center justify-center">
-                <div className="text-3xl sm:text-5xl font-bold" style={{ color: levelTextColors[program.level] }}>
+              <div className="flex flex-col items-center justify-center h-full">
+                {/* Percentage */}
+                <div className="text-3xl sm:text-5xl font-bold mb-3" style={{ color: levelTextColors[program.level] }}>
                   {Math.round(program.score)}%
                 </div>
-              </div>
-              <div className="h-2/5 flex flex-col justify-center items-center">
+                
+                {/* Level pill */}
+                <div className="text-xs font-medium border rounded-full px-3 py-0.5 mb-3" 
+                  style={{ 
+                    color: levelTextColors[program.level],
+                    borderColor: levelTextColors[program.level]
+                  }}>
+                  {levelTranslations[program.level][language]}
+                </div>
+                
+                {/* Program name */}
                 <div className="text-xs sm:text-sm text-center leading-tight" style={{ color: levelTextColors[program.level] }}>
                   {program[language]}
                 </div>
               </div>
+              
               <span className="absolute bottom-2 right-2 opacity-70 hover:opacity-100 text-lg" style={{ color: levelTextColors[program.level] }}>
                 ⓘ
               </span>
@@ -221,16 +232,27 @@ const GridViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
               className="aspect-square rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 p-2 flex flex-col relative cursor-pointer"
               style={{ backgroundColor: levelColors[program.level] }}
             >
-              <div className="h-3/5 flex items-center justify-center">
-                <div className="text-2xl sm:text-3xl font-bold" style={{ color: levelTextColors[program.level] }}>
+              <div className="flex flex-col items-center justify-center h-full">
+                {/* Percentage */}
+                <div className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: levelTextColors[program.level] }}>
                   {Math.round(program.score)}%
                 </div>
-              </div>
-              <div className="h-2/5 flex flex-col justify-center items-center">
+                
+                {/* Level pill */}
+                <div className="text-[10px] font-medium border rounded-full px-2 py-0.5 mb-2" 
+                  style={{ 
+                    color: levelTextColors[program.level],
+                    borderColor: levelTextColors[program.level]
+                  }}>
+                  {levelTranslations[program.level][language]}
+                </div>
+                
+                {/* Program name */}
                 <div className="text-[10px] sm:text-xs text-center leading-tight" style={{ color: levelTextColors[program.level] }}>
                   {program[language]}
                 </div>
               </div>
+              
               <span className="absolute bottom-1 right-1 opacity-70 hover:opacity-100 text-sm" style={{ color: levelTextColors[program.level] }}>
                 ⓘ
               </span>
@@ -267,16 +289,27 @@ const ListViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
               className="aspect-square rounded-lg shadow-md transform hover:scale-105 transition-all duration-200 p-3 flex flex-col relative cursor-pointer"
               style={{ backgroundColor: levelColors[program.level] }}
             >
-              <div className="h-3/5 flex items-center justify-center">
-                <div className="text-3xl sm:text-5xl font-bold" style={{ color: levelTextColors[program.level] }}>
+              <div className="flex flex-col items-center justify-center h-full">
+                {/* Percentage */}
+                <div className="text-3xl sm:text-5xl font-bold mb-3" style={{ color: levelTextColors[program.level] }}>
                   {Math.round(program.score)}%
                 </div>
-              </div>
-              <div className="h-2/5 flex flex-col justify-center items-center">
+                
+                {/* Level pill */}
+                <div className="text-xs font-medium border rounded-full px-3 py-0.5 mb-3" 
+                  style={{ 
+                    color: levelTextColors[program.level],
+                    borderColor: levelTextColors[program.level]
+                  }}>
+                  {levelTranslations[program.level][language]}
+                </div>
+                
+                {/* Program name */}
                 <div className="text-xs sm:text-sm text-center leading-tight" style={{ color: levelTextColors[program.level] }}>
                   {program[language]}
                 </div>
               </div>
+              
               <span className="absolute bottom-2 right-2 opacity-70 hover:opacity-100 text-lg" style={{ color: levelTextColors[program.level] }}>
                 ⓘ
               </span>

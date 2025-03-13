@@ -6,7 +6,6 @@ import { supabase } from '../../supabase';
 import { calculateResults, getResultsSummary } from '../../utils/calculateResults';
 import GridView from '../results/GridView';
 import ListView from '../results/ListView';
-import { generatePDF } from '../../utils/pdfGenerator';
 
 const translations = {
   title: {
@@ -57,6 +56,10 @@ const translations = {
     ru: 'Скачать PDF',
     kz: 'PDF жүктеу'
   },
+  sendEmail: {
+    ru: 'Отправить на email',
+    kz: 'Поштаға жіберу'
+  },
   markAsReviewed: {
     ru: 'Отметить как просмотренный',
     kz: 'Қаралған деп белгілеу'
@@ -106,7 +109,6 @@ const ResultReview = () => {
           return;
         }
         
-        // Calculate results
         const calculatedResults = calculateResults(data.answers);
         const resultsSummary = getResultsSummary(calculatedResults);
         
@@ -123,9 +125,41 @@ const ResultReview = () => {
     fetchResults();
   }, [id]);
   
-  const handleDownloadPDF = () => {
-    if (userData && results) {
-      generatePDF(userData, results, language);
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pdf/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userData,
+          language,
+          quizId: id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const date = new Date(userData.created_at);
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const safeName = userData.user_name.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase();
+      const filename = `${safeName}_${dateStr}_grid_p18.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Error handling PDF:', err);
+      alert('Operation failed. Please try again.');
     }
   };
   
@@ -137,13 +171,11 @@ const ResultReview = () => {
     try {
       const newStatus = !userData.review_status;
       
-      // Update local state
       setUserData({
         ...userData,
         review_status: newStatus
       });
       
-      // Update in Supabase
       const { error } = await supabase
         .from('quiz_results')
         .update({ review_status: newStatus })
@@ -152,7 +184,6 @@ const ResultReview = () => {
       if (error) throw error;
     } catch (err) {
       console.error('Error updating review status:', err);
-      // Revert if error
       setUserData({
         ...userData,
         review_status: !userData.review_status
@@ -161,11 +192,7 @@ const ResultReview = () => {
   };
   
   const handleBack = () => {
-    if (role === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/coach/dashboard');
-    }
+    navigate(role === 'admin' ? '/admin/dashboard' : '/coach/dashboard');
   };
   
   if (loading) {
@@ -224,11 +251,6 @@ const ResultReview = () => {
             <div>
               <span className="font-medium text-gray-600">{translations.name[language]}:</span>{' '}
               <span className="text-gray-800">{userData.user_name || '—'}</span>
-            </div>
-            
-            <div>
-              <span className="font-medium text-gray-600">{translations.email[language]}:</span>{' '}
-              <span className="text-gray-800">{userData.user_email || '—'}</span>
             </div>
             
             <div>

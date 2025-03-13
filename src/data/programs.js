@@ -20,17 +20,17 @@ export const programs = [
 ];
 
 export const getScoreLevel = (score) => {
-  if (score >= 80) return 'high';
-  if (score >= 60) return 'elevated';
-  if (score >= 40) return 'medium';
+  if (score >= 75) return 'high';
+  if (score >= 50) return 'elevated';
+  if (score >= 25) return 'medium';
   return 'low';
 };
 
 export const levelColors = {
-  high: '#DC2626', // red card
-  elevated: '#ff6100', // orange card
-  medium: '#ffd900', // yellow card
-  low: '#16A34A' // green card
+  high: '#DC2626', // red
+  elevated: '#ff6100', // orange
+  medium: '#ffd900', // yellow
+  low: '#16A34A' // green
 };
 
 export const levelTextColors = {

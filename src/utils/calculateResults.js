@@ -180,11 +180,14 @@ export const calculateResults = (answers) => {
           results[program.id].questionCount = answeredCount;
           results[program.id].score = Math.max(0, Math.min(100, percentage)); // Constrain to 0-100
           
-          // Set category based on score
-          if (percentage <= 40) results[program.id].category = 'reduced';
-          else if (percentage <= 60) results[program.id].category = 'average';
-          else if (percentage <= 80) results[program.id].category = 'increased';
-          else results[program.id].category = 'high';
+          // Determine category with explicit ranges
+          let category;
+          if (percentage >= 75) category = 'high';
+          else if (percentage >= 50) category = 'elevated';
+          else if (percentage >= 25) category = 'medium';
+          else category = 'low';
+          
+          results[program.id].category = category;
         }
       });
     } else {
@@ -246,11 +249,14 @@ export const calculateResults = (answers) => {
           
           program.score = Math.max(0, Math.min(100, percentage)); // Constrain to 0-100
           
-          // Set category based on score
-          if (percentage <= 40) program.category = 'reduced';
-          else if (percentage <= 60) program.category = 'average';
-          else if (percentage <= 80) program.category = 'increased';
-          else program.category = 'high';
+          // Determine category with explicit ranges
+          let category;
+          if (percentage >= 75) category = 'high';
+          else if (percentage >= 50) category = 'elevated';
+          else if (percentage >= 25) category = 'medium';
+          else category = 'low';
+          
+          program.category = category;
         } else {
           program.category = 'reduced';
           program.score = 0;

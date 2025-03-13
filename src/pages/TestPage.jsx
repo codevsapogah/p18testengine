@@ -262,11 +262,16 @@ const TestPage = () => {
         // Continue even if update fails
       }
       
+      // Navigate to results page immediately
+      navigate(`/results/grid/${sessionId}`);
+      
+      // Send emails in the background with delay
+      setTimeout(() => {
       // Send email to client
       if (data.user_email) {
         try {
-          console.log('Sending email to client:', data.user_email);
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/email/completion`, {
+            console.log('Sending delayed email to client:', data.user_email);
+            fetch(`${process.env.REACT_APP_API_URL}/email/completion`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -277,23 +282,25 @@ const TestPage = () => {
               clientName: data.user_name || 'Client',
               language
             })
-          });
-          
+            }).then(response => {
           if (!response.ok) {
-            console.warn('Failed to send client email notification', await response.text());
+                console.warn('Failed to send client email notification');
           } else {
             console.log('Client email notification sent successfully');
           }
+            }).catch(emailErr => {
+              console.warn('Error sending client email:', emailErr);
+            });
         } catch (emailErr) {
-          console.warn('Error sending client email:', emailErr);
+            console.warn('Error setting up client email:', emailErr);
         }
       }
       
       // Send email to coach
       if (data.coach_email) {
         try {
-          console.log('Sending email to coach:', data.coach_email);
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/email/notification`, {
+            console.log('Sending delayed email to coach:', data.coach_email);
+            fetch(`${process.env.REACT_APP_API_URL}/email/notification`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -304,20 +311,21 @@ const TestPage = () => {
               coachEmail: data.coach_email,
               language
             })
-          });
-          
+            }).then(response => {
           if (!response.ok) {
-            console.warn('Failed to send coach notification', await response.text());
+                console.warn('Failed to send coach notification');
           } else {
             console.log('Coach notification sent successfully');
           }
+            }).catch(emailErr => {
+              console.warn('Error sending coach notification:', emailErr);
+            });
         } catch (emailErr) {
-          console.warn('Error sending coach notification:', emailErr);
+            console.warn('Error setting up coach notification:', emailErr);
+          }
         }
-      }
+      }, 30000); // 30 second delay
       
-      // Now navigate to results page
-      navigate(`/results/grid/${sessionId}`);
     } catch (err) {
       console.error('Error during quiz completion:', err);
       // Still navigate to results page
