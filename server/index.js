@@ -1,16 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const pdfRoutes = require('./routes/pdf');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
-// Routes
-app.use('/api/pdf', pdfRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

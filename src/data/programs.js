@@ -43,11 +43,11 @@ export const levelTextColors = {
 export const levelTranslations = {
   high: {
     ru: 'Высокий',
-    kz: 'Жоғары'
+    kz: 'Өте жоғары'
   },
   elevated: {
     ru: 'Повышенный',
-    kz: 'Жоғарылаған'
+    kz: 'Жоғары'
   },
   medium: {
     ru: 'Средний',
@@ -55,6 +55,6 @@ export const levelTranslations = {
   },
   low: {
     ru: 'Пониженный',
-    kz: 'Төмендеген'
+    kz: 'Төмен'
   }
 }; 

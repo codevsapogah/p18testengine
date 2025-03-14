@@ -6,6 +6,8 @@ import { supabase } from '../../supabase';
 import { calculateResults, getResultsSummary } from '../../utils/calculateResults';
 import GridView from '../results/GridView';
 import ListView from '../results/ListView';
+import { generateGridPDF } from '../../utils/gridpdf';
+import { generateListPDF } from '../../utils/listpdf';
 
 const translations = {
   title: {
@@ -125,41 +127,55 @@ const ResultReview = () => {
     fetchResults();
   }, [id]);
   
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pdf/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userData,
-          language,
-          quizId: id
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+      if (!userData) {
+        throw new Error('No results available');
       }
 
-      const blob = await response.blob();
-      const date = new Date(userData.created_at);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const safeName = userData.user_name.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_').toLowerCase();
-      const filename = `${safeName}_${dateStr}_grid_p18.pdf`;
+      // Create sortedPrograms array from userData.calculated_results
+      const sortedPrograms = Object.entries(userData.calculated_results).map(([key, value]) => {
+        const programId = parseInt(key.replace('program_', ''), 10);
+        return {
+          id: programId,
+          ru: userData.program_names?.[programId]?.ru || `Program ${programId}`,
+          kz: userData.program_names?.[programId]?.kz || `Program ${programId}`,
+          score: Math.round(value),
+        };
+      });
 
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error('Error handling PDF:', err);
-      alert('Operation failed. Please try again.');
+      // Use client-side PDF generation
+      const translations = {
+        title: {
+          ru: 'Высокие результаты',
+          kz: 'Жоғары нәтижелер'
+        },
+        allResults: {
+          ru: 'Все результаты',
+          kz: 'Барлық нәтижелер'
+        },
+        permalink: {
+          ru: 'Постоянная ссылка на результаты:',
+          kz: 'Нәтижелерге тұрақты сілтеме:'
+        },
+        program: {
+          ru: 'Программа',
+          kz: 'Бағдарлама'
+        },
+        category: {
+          ru: 'Категория',
+          kz: 'Санат'
+        }
+      };
+
+      if (viewMode === 'grid') {
+        generateGridPDF(userData, sortedPrograms, language, translations, id);
+      } else {
+        generateListPDF(userData, sortedPrograms, language, translations, id);
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      setError('Failed to generate PDF');
     }
   };
   
