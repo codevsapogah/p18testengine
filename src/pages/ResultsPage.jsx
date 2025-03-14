@@ -11,6 +11,8 @@ import { questions } from '../data/questions';
 import { generateGridPDF } from '../utils/gridpdf';
 import { generateListPDF } from '../utils/listpdf';
 import { useQuery } from '@tanstack/react-query';
+import { sendResultsEmail, sendTestEmail } from '../utils/emailService';
+import { createSafeFilename } from '../utils/gridpdf';
 
 // Format date as: day monthName year
 const formatDate = (dateStr, language) => {
@@ -172,6 +174,14 @@ const translations = {
   inProgressMessage: {
     ru: 'Пользователь все еще проходит тест. Результаты будут доступны после завершения теста.',
     kz: 'Қолданушы әлі тестті өтіп жатыр. Нәтижелер тест аяқталғаннан кейін қол жетімді болады.'
+  },
+  sendTestEmail: {
+    ru: 'Отправить тестовое письмо',
+    kz: 'Тест хатын жіберу'
+  },
+  emailError: {
+    ru: 'Ошибка отправки',
+    kz: 'Жіберу қатесі'
   }
 };
 
@@ -558,6 +568,7 @@ const ResultsPage = ({ view = 'grid' }) => {
   
   const [currentView, setCurrentView] = useState(view);
   const [expandedProgram, setExpandedProgram] = useState(null);
+  const [emailStatus, setEmailStatus] = useState('');
   
   // Use React Query to fetch results data
   const { data: userData, isLoading, error: fetchError } = useQuery({
@@ -654,17 +665,29 @@ const ResultsPage = ({ view = 'grid' }) => {
     setCurrentView(view);
   }, [view]);
   
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     try {
       if (!results || !userData) {
         throw new Error('No results available');
       }
 
-      if (currentView === 'grid') {
-        generateGridPDF(userData, sortedPrograms, language, translations, id);
-      } else {
-        generateListPDF(userData, sortedPrograms, language, translations, id);
-      }
+      const pdfBlob = await generateGridPDF(userData, sortedPrograms, language, translations, id);
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(pdfBlob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${createSafeFilename(userData, 'grid')}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('PDF generation error:', error);
     }
@@ -702,7 +725,59 @@ const ResultsPage = ({ view = 'grid' }) => {
   const handleProgramClick = (programId) => {
     setExpandedProgram(programId);
   };
+
+  useEffect(() => {
+    if (isTestComplete && results && !userData.email_sent) {
+      // Immediately mark as sent to prevent duplicate sends
+      const markEmailAsSent = async () => {
+        try {
+          await supabase
+            .from('quiz_results')
+            .update({ email_sent: true })
+            .eq('id', id);
+        } catch (error) {
+          console.error('Error updating email_sent status:', error);
+        }
+      };
+      
+      // Send results email after marking as sent
+      const sendEmail = async () => {
+        try {
+          await markEmailAsSent(); // Mark as sent first
+          await sendResultsEmail(userData, sortedPrograms, language, translations, id);
+        } catch (error) {
+          console.error('Error sending results email:', error);
+        }
+      };
+
+      // Execute with a small delay
+      const timer = setTimeout(sendEmail, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isTestComplete, results, userData?.email_sent]);
   
+  const handleSendTestEmail = async () => {
+    try {
+      if (!userData?.user_email) return;
+      
+      setEmailStatus('sending');
+      await sendTestEmail(
+        userData.user_email, 
+        language,
+        userData,
+        sortedPrograms,
+        translations,
+        id
+      );
+      setEmailStatus('success');
+      setTimeout(() => setEmailStatus(''), 3000);
+    } catch (error) {
+      console.error('Test email error:', error);
+      setEmailStatus('error');
+      setTimeout(() => setEmailStatus(''), 3000);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -789,8 +864,8 @@ const ResultsPage = ({ view = 'grid' }) => {
                 </div>
                 
                 {/* Control buttons - in a separate row with fixed layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Toggle buttons */}
+                <div className={`grid gap-3 ${searchParams.has('admin') ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                  {/* View toggle buttons */}
                   <div className="flex rounded-lg overflow-hidden bg-white/20 shadow-inner">
                     <button
                       onClick={() => toggleView('list')}
@@ -819,6 +894,30 @@ const ResultsPage = ({ view = 'grid' }) => {
                     </svg>
                     {translations.downloadPDF[language]}
                   </button>
+
+                  {/* Test email button - only show if admin param exists */}
+                  {searchParams.has('admin') && (
+                    <button
+                      onClick={handleSendTestEmail}
+                      className={`py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center shadow-sm ${
+                        emailStatus === 'success' 
+                          ? 'bg-green-500 text-white' 
+                          : emailStatus === 'error'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-white hover:bg-gray-100'
+                      }`}
+                      style={emailStatus === '' ? { color: '#6B46C1' } : {}}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      {emailStatus === 'success' 
+                        ? translations.emailSent[language]
+                        : emailStatus === 'error'
+                        ? translations.emailError[language]
+                        : translations.sendTestEmail[language]}
+                    </button>
+                  )}
                 </div>
               </div>
               

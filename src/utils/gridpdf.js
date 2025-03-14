@@ -24,7 +24,7 @@ const transliterate = (text) => {
 };
 
 // Create a safe filename
-const createSafeFilename = (userData, type) => {
+export const createSafeFilename = (userData, type) => {
   if (!userData || !userData.user_name) return `p18_${type}`;
   
   // Transliterate name if it contains Cyrillic
@@ -78,7 +78,7 @@ const getScoreLevel = (score) => {
 
 export const generateGridPDF = (userData, sortedPrograms, language, translations, id) => {
   try {
-    console.log('Starting Grid PDF download...');
+    console.log('Starting Grid PDF generation...');
     
     if (!sortedPrograms || !userData) {
       throw new Error('No results available');
@@ -232,7 +232,6 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
       
       // Calculate center positions
       const centerX = x + cardWidth/2;
-      const centerY = currentY + cardHeight/2;
       
       // Draw percentage
       doc.setFontSize(30);
@@ -313,7 +312,6 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
       
       // Calculate center positions
       const centerX = gridX + smallCardWidth/2;
-      const centerY = gridY + smallCardHeight/2;
       
       // Draw percentage
       doc.setFontSize(22);
@@ -390,9 +388,10 @@ export const generateGridPDF = (userData, sortedPrograms, language, translations
     doc.link(logoX, logoY, logoSize, logoSize, { url: 'https://p18.kz/' });
     doc.setTextColor(44, 54, 78); // Reset text color
 
-    // Save with custom filename
-    doc.save(`${filename}.pdf`);
-    console.log('Grid PDF saved successfully');
+    // Instead of saving, return blob
+    const pdfBlob = doc.output('blob');
+    console.log('Grid PDF generated successfully');
+    return pdfBlob;
   } catch (error) {
     console.error('Grid PDF generation error:', error);
     throw error;
