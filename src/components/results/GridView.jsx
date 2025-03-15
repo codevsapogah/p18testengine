@@ -22,11 +22,6 @@ const GridView = ({ results, language }) => {
   // Organize programs by category for display
   const highResults = results.byCategory.high || [];
   const increasedResults = results.byCategory.increased || [];
-  // These variables aren't used, so add eslint-disable comments or remove them
-  // eslint-disable-next-line no-unused-vars
-  const averageResults = results.byCategory.average || [];
-  // eslint-disable-next-line no-unused-vars
-  const reducedResults = results.byCategory.reduced || [];
   
   const translations = {
     highTitle: {

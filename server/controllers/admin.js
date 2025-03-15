@@ -1,4 +1,3 @@
-const bcrypt = require('bcrypt');
 const { supabase } = require('../utils/supabase');
 
 // Get all coaches

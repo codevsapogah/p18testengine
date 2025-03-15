@@ -1,4 +1,3 @@
-const bcrypt = require('bcrypt');
 const { supabase } = require('../utils/supabase');
 const { generateToken } = require('../middleware/auth');
 
@@ -27,8 +26,9 @@ exports.login = async (req, res) => {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
       });
       
       // Return user data
@@ -116,8 +116,9 @@ exports.login = async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
     });
     console.log('Set cookie and returning user data');
 

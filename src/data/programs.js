@@ -20,7 +20,7 @@ export const programs = [
 ];
 
 export const getScoreLevel = (score) => {
-  if (score > 75) return 'high';       // red
+  if (score >= 75) return 'high';       // red
   if (score >= 50) return 'elevated';  // orange
   if (score >= 25) return 'medium';    // yellow
   return 'low';                        // green

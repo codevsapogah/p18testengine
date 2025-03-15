@@ -251,13 +251,15 @@ const ResultReview = () => {
     <div>
       <div className="mb-8 bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">{translations.title[language]}</h2>
-          <button
-            onClick={handleBack}
-            className="text-blue-600 hover:underline"
-          >
-            {translations.backToDashboard[language]}
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={handleBack}
+              className="mr-4 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              {translations.backToDashboard[language]}
+            </button>
+            <h2 className="text-2xl font-bold">{translations.title[language]}</h2>
+          </div>
         </div>
         
         <div className="bg-gray-50 p-4 rounded-md mb-4">

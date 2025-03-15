@@ -54,10 +54,10 @@ export const calculateResults = (answers) => {
       emptyResults[program.id] = {
         id: program.id,
         name: program.name || { ru: 'Unknown', kz: 'Unknown' },
-        score: 0,
+        score: -20,
         rawScore: 0,
         questionCount: 0,
-        category: 'reduced',
+        category: 'low',
         maxScore: 0
       };
     });
@@ -258,8 +258,9 @@ export const calculateResults = (answers) => {
           
           program.category = category;
         } else {
-          program.category = 'reduced';
-          program.score = 0;
+          program.category = 'low';
+          program.score = -20;  // Set a clear indicator that the program has no questions
+          program.rawScore = 0;
         }
       });
     }
@@ -283,7 +284,7 @@ export const calculateResults = (answers) => {
 export const getResultsSummary = (results) => {
   if (!results || typeof results !== 'object') {
     console.error('Invalid results provided to getResultsSummary:', results);
-    return { all: [], byCategory: { high: [], increased: [], average: [], reduced: [] }, topPrograms: [] };
+    return { all: [], byCategory: { high: [], elevated: [], medium: [], low: [] }, topPrograms: [] };
   }
   
   const programResults = Object.values(results);
@@ -294,9 +295,9 @@ export const getResultsSummary = (results) => {
   // Group by category
   const byCategory = {
     high: sortedPrograms.filter(p => p.category === 'high'),
-    increased: sortedPrograms.filter(p => p.category === 'increased'),
-    average: sortedPrograms.filter(p => p.category === 'average'),
-    reduced: sortedPrograms.filter(p => p.category === 'reduced')
+    elevated: sortedPrograms.filter(p => p.category === 'elevated'),
+    medium: sortedPrograms.filter(p => p.category === 'medium'),
+    low: sortedPrograms.filter(p => p.category === 'low')
   };
   
   return {

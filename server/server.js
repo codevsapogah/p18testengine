@@ -20,8 +20,28 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // CORS configuration with proper origin handling
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3001',
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if(!origin) return callback(null, true);
+    
+    // In development, use specific origins
+    if(process.env.NODE_ENV !== 'production') {
+      const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3031'];
+      if(allowedOrigins.indexOf(origin) === -1) {
+        console.log('Blocked origin:', origin);
+        return callback(null, false);
+      }
+      console.log('Allowed origin:', origin);
+      return callback(null, true);
+    }
+    
+    // In production, allow the request's origin
+    console.log('Production mode, allowing origin:', origin);
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // API Routes

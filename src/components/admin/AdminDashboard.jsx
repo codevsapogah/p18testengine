@@ -361,7 +361,10 @@ const AdminDashboard = () => {
     const matchesDateRange = (!startDate || resultDate >= new Date(startDate)) && 
                             (!endDate || resultDate <= new Date(endDate + 'T23:59:59'));
     
-    return matchesSearch && matchesDateRange;
+    // Add coach filter
+    const matchesCoach = !selectedCoach || result.coach_email === selectedCoach;
+    
+    return matchesSearch && matchesDateRange && matchesCoach;
   });
   
   const handleSearchChange = (e) => {
