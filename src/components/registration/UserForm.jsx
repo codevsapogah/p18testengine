@@ -129,7 +129,8 @@ const UserForm = () => {
             coach_email: formData.coach_email,
             created_at: new Date(),
             is_random: false,
-            answers: {}
+            answers: {},
+            language: language
           }
         ]);
         

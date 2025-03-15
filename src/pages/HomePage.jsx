@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -6,11 +6,13 @@ import UserForm from '../components/registration/UserForm';
 import { supabase } from '../supabase';
 import { questions } from '../data/questions';
 import { calculateResults } from '../utils/calculateResults';
+import { LanguageContext } from '../contexts/LanguageContext';
 
 const HomePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showAdminButton, setShowAdminButton] = useState(false);
+  const { language } = useContext(LanguageContext);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -43,7 +45,8 @@ const HomePage = () => {
             is_random: true,
             question_order: randomizedIds,
             current_index: questionIds.length - 1, // Set to the last question
-            answers: {}
+            answers: {},
+            language: language
           }
         ]);
       

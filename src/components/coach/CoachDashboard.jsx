@@ -295,45 +295,52 @@ const CoachDashboard = () => {
         {/* Search and Filter Controls - Responsive layout */}
         <div className="space-y-4 mb-6">
           {/* Desktop & Tablet - Two columns */}
-          <div className="hidden sm:flex sm:flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
-            <div className="md:flex-grow">
+          <div className="hidden sm:flex items-end space-x-4">
+            <div className="flex-grow">
+              <label className="block text-sm text-gray-600 mb-1">
+                {translations.search[language]}
+              </label>
               <input
                 type="text"
                 placeholder={translations.search[language]}
                 value={searchTerm}
                 onChange={handleSearchChange}
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md h-10"
               />
             </div>
             
-            <div className="flex flex-wrap md:flex-nowrap gap-3 items-center">
+            <div className="flex space-x-4 items-end">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">{translations.startDate[language]}</label>
+                <label className="block text-sm text-gray-600 mb-1">
+                  {translations.startDate[language]}
+                </label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={handleStartDateChange}
-                  className="px-3 py-2 border rounded-md"
+                  className="px-3 py-2 border rounded-md h-10"
                 />
               </div>
               
               <div>
-                <label className="block text-sm text-gray-600 mb-1">{translations.endDate[language]}</label>
+                <label className="block text-sm text-gray-600 mb-1">
+                  {translations.endDate[language]}
+                </label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={handleEndDateChange}
-                  className="px-3 py-2 border rounded-md"
+                  className="px-3 py-2 border rounded-md h-10"
                 />
               </div>
               
-              <div className="flex items-center">
+              <div className="flex items-center h-10">
                 <input
                   id="hideReviewed"
                   type="checkbox"
                   checked={hideReviewed}
                   onChange={() => setHideReviewed(!hideReviewed)}
-                  className="h-5 w-5 text-blue-600"
+                  className="h-5 w-5 text-blue-600 rounded"
                 />
                 <label htmlFor="hideReviewed" className="ml-2 text-gray-700 whitespace-nowrap">
                   {translations.hideReviewed[language]}
@@ -344,41 +351,50 @@ const CoachDashboard = () => {
           
           {/* Mobile - Stack everything */}
           <div className="sm:hidden space-y-3">
-            <input
-              type="text"
-              placeholder={translations.search[language]}
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="w-full px-3 py-2 border rounded-md"
-            />
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                {translations.search[language]}
+              </label>
+              <input
+                type="text"
+                placeholder={translations.search[language]}
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full px-3 py-2 border rounded-md h-10"
+              />
+            </div>
             
             <div>
-              <label className="block text-sm text-gray-600 mb-1">{translations.startDate[language]}</label>
+              <label className="block text-sm text-gray-600 mb-1">
+                {translations.startDate[language]}
+              </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={handleStartDateChange}
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md h-10"
               />
             </div>
             
             <div>
-              <label className="block text-sm text-gray-600 mb-1">{translations.endDate[language]}</label>
+              <label className="block text-sm text-gray-600 mb-1">
+                {translations.endDate[language]}
+              </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={handleEndDateChange}
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border rounded-md h-10"
               />
             </div>
             
-            <div className="flex items-center">
+            <div className="flex items-center h-10">
               <input
                 id="hideReviewedMobile"
                 type="checkbox"
                 checked={hideReviewed}
                 onChange={() => setHideReviewed(!hideReviewed)}
-                className="h-5 w-5 text-blue-600"
+                className="h-5 w-5 text-blue-600 rounded"
               />
               <label htmlFor="hideReviewedMobile" className="ml-2 text-gray-700">
                 {translations.hideReviewed[language]}
@@ -413,10 +429,7 @@ const CoachDashboard = () => {
                       {translations.userEmail[language]}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {translations.date[language]}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {translations.status[language]}
+                      {translations.date[language]} / {translations.status[language]}
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {translations.actions[language]}
@@ -429,8 +442,8 @@ const CoachDashboard = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredClients.map((client) => (
                     <tr key={client.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 break-words">
+                      <td className="px-6 py-4 w-[200px] align-middle">
+                        <div className="text-sm font-medium text-gray-900 mb-1">
                           {client.user_name || '—'}
                           {client.status === 'incomplete' && (
                             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -438,18 +451,19 @@ const CoachDashboard = () => {
                             </span>
                           )}
                         </div>
+                        <div className="text-sm text-gray-500">
+                          {client.user_phone || '—'}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 w-[300px] align-middle">
                         <div className="text-sm text-gray-500">
                           {client.user_email || '—'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
+                      <td className="px-6 py-4 w-[200px] align-middle">
+                        <div className="text-sm text-gray-500 mb-1">
                           {formatDate(client.created_at)}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm font-medium ${
                           client.status === 'complete' ? 'text-green-600' : 
                           client.status === 'in_progress' ? 'text-blue-600' : 
@@ -458,27 +472,27 @@ const CoachDashboard = () => {
                           {statusTranslations[client.status][language]}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {client.status === 'complete' ? (
+                      <td className="px-6 py-4 align-middle">
+                        <div className="flex flex-col space-y-2">
                           <Link
                             to={`/results/grid/${client.id}?lang=${language}`}
-                            className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm whitespace-nowrap inline-block min-w-[140px] h-10 flex items-center justify-center"
+                            className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm whitespace-nowrap inline-block h-10 flex items-center justify-center"
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             {translations.viewResult[language]}
                           </Link>
-                        ) : client.status === 'in_progress' ? (
-                          <span className="text-blue-600 text-sm">
-                            {translations.testInProgress[language]}
-                          </span>
-                        ) : (
-                          <span className="text-red-600 text-sm">
-                            {translations.testIncomplete[language]}
-                          </span>
-                        )}
+                          <a
+                            href={`https://wa.me/${client.user_phone?.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm whitespace-nowrap inline-block h-10 flex items-center justify-center"
+                          >
+                            {language === 'ru' ? 'Написать в WA' : 'Ватсапқа жазу'}
+                          </a>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <td className="px-6 py-4 align-middle text-center">
                         <input
                           type="checkbox"
                           checked={client.review_status || false}
@@ -533,16 +547,10 @@ const CoachDashboard = () => {
               {filteredClients.map((client) => (
                 <div key={client.id} className="border-b border-gray-200 px-4 py-3">
                   <div className="flex justify-between items-center mb-2">
-                    <div className="font-medium text-gray-900 break-words mb-2 min-h-[40px]">
+                    <div className="font-medium text-gray-900">
                       {client.user_name || '—'}
                     </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={client.review_status || false}
-                        onChange={() => handleReviewStatusChange(client.id, !client.review_status)}
-                        className="h-5 w-5 text-green-600 rounded mr-2"
-                      />
+                    <div className="flex space-x-2">
                       <Link
                         to={`/results/grid/${client.id}?lang=${language}`}
                         className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm whitespace-nowrap inline-block min-w-[120px] h-10 flex items-center justify-center"
@@ -551,6 +559,14 @@ const CoachDashboard = () => {
                       >
                         {translations.viewResult[language]}
                       </Link>
+                      <a
+                        href={`https://wa.me/${client.user_phone?.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm whitespace-nowrap inline-block h-10 flex items-center justify-center"
+                      >
+                        {language === 'ru' ? 'WA' : 'WA'}
+                      </a>
                     </div>
                   </div>
                   <div className="text-sm text-gray-500 truncate mb-1">

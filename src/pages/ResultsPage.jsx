@@ -12,7 +12,7 @@ import { generateGridPDF } from '../utils/gridpdf';
 import { generateListPDF } from '../utils/listpdf';
 import { useQuery } from '@tanstack/react-query';
 import { sendResultsEmail, sendTestEmail } from '../utils/emailService';
-import { createSafeFilename } from '../utils/gridpdf';
+import { createSafeFilename } from '../utils/pdfUtils';
 
 // Format date as: day monthName year
 const formatDate = (dateStr, language) => {
@@ -106,8 +106,8 @@ const translations = {
     kz: '❗️ Әр бағдарлама байқаусыз өміріңізді құртып, табысыңызды шектеп, бақытты қарым-қатынас құруға кедергі келтіреді. Бірақ жақсы жаңалық - бұл бағдарламаларды өзгертуге болады! Осы кедергілерден қалай құтылып, толыққанды өмір сүруді бастауға болатынын білу үшін кеңеске жазылыңыз.'
   },
   consultation: {
-    ru: 'Записаться на бесплатный разбор',
-    kz: 'Тегін консультацияға жазылу'
+    ru: 'Записаться на разбор с коучем',
+    kz: 'Коучпен консультацияға жазылу'
   },
   sentToEmail: {
     ru: 'Результаты теста отправлены на ваш email и email коуча.',
@@ -360,7 +360,7 @@ const ListViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
                 </div>
                 
                 <div className="flex-1 w-full md:w-auto flex flex-col md:flex-row md:items-center">
-                  <div className="w-full md:w-[340px] bg-gray-200 rounded-full h-4 mb-3 md:mb-0">
+                  <div className="w-full md:w-[500px] bg-gray-200 rounded-full h-4 mb-3 md:mb-0">
                     <div
                       className="h-4 rounded-full"
                       style={{
@@ -671,7 +671,10 @@ const ResultsPage = ({ view = 'grid' }) => {
         throw new Error('No results available');
       }
 
-      const pdfBlob = await generateGridPDF(userData, sortedPrograms, language, translations, id);
+      // Generate either grid or list PDF based on current view
+      const pdfBlob = currentView === 'grid' 
+        ? await generateGridPDF(userData, sortedPrograms, language, translations, id)
+        : await generateListPDF(userData, sortedPrograms, language, translations, id);
       
       // Create a URL for the blob
       const url = window.URL.createObjectURL(pdfBlob);
@@ -679,7 +682,7 @@ const ResultsPage = ({ view = 'grid' }) => {
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${createSafeFilename(userData, 'grid')}.pdf`;
+      link.download = `${createSafeFilename(userData, currentView)}.pdf`;
       
       // Trigger download
       document.body.appendChild(link);
@@ -727,24 +730,44 @@ const ResultsPage = ({ view = 'grid' }) => {
   };
 
   useEffect(() => {
-    if (isTestComplete && results && !userData.email_sent) {
+    if (isTestComplete && results && !userData?.email_sent) {
+      console.log('Email conditions met:', {
+        isTestComplete,
+        hasResults: !!results,
+        emailSent: userData?.email_sent,
+        id: id
+      });
+      
       // Immediately mark as sent to prevent duplicate sends
       const markEmailAsSent = async () => {
         try {
-          await supabase
+          const { error } = await supabase
             .from('quiz_results')
             .update({ email_sent: true })
             .eq('id', id);
+            
+          if (error) {
+            console.error('Error marking email as sent:', error);
+            return false;
+          }
+          return true;
         } catch (error) {
           console.error('Error updating email_sent status:', error);
+          return false;
         }
       };
       
       // Send results email after marking as sent
       const sendEmail = async () => {
         try {
-          await markEmailAsSent(); // Mark as sent first
+          const marked = await markEmailAsSent(); // Mark as sent first
+          if (!marked) {
+            console.log('Skipping email send - could not mark as sent');
+            return;
+          }
+          
           await sendResultsEmail(userData, sortedPrograms, language, translations, id);
+          console.log('Email sent successfully');
         } catch (error) {
           console.error('Error sending results email:', error);
         }
@@ -753,8 +776,14 @@ const ResultsPage = ({ view = 'grid' }) => {
       // Execute with a small delay
       const timer = setTimeout(sendEmail, 2000);
       return () => clearTimeout(timer);
+    } else {
+      console.log('Skipping email send:', {
+        isTestComplete,
+        hasResults: !!results,
+        emailSent: userData?.email_sent
+      });
     }
-  }, [isTestComplete, results, userData?.email_sent]);
+  }, [isTestComplete, results, userData?.email_sent, id, language, sortedPrograms, userData]);
   
   const handleSendTestEmail = async () => {
     try {
@@ -785,10 +814,7 @@ const ResultsPage = ({ view = 'grid' }) => {
       <main className="flex-grow px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto">
           {isLoading ? (
-            <div className="flex justify-center items-center h-60">
-              <Loading size={50} />
-              <span className="ml-4 text-lg text-gray-600">{translations.loading[language]}</span>
-            </div>
+            <Loading fullScreen />
           ) : fetchError ? (
             <div className="bg-red-100 p-4 rounded-lg text-red-700 text-center">
               <p className="font-medium">{fetchError.message}</p>

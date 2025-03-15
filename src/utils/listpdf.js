@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { levelTranslations } from '../data/programs';
 
 // Transliterate Cyrillic to Latin
@@ -67,7 +68,7 @@ const formatDate = (dateStr, language) => {
   return `${day} ${month} ${year}${suffix}`;
 };
 
-export const generateListPDF = (userData, sortedPrograms, language, translations, id) => {
+export const generateListPDF = async (userData, sortedPrograms, language, translations, id) => {
   try {
     console.log('Starting List PDF download...');
     
@@ -206,10 +207,10 @@ export const generateListPDF = (userData, sortedPrograms, language, translations
 
     // Get score level based on score value - match logic from data/programs.js
     const getScoreLevel = (score) => {
-      if (score > 80) return 'high';       // red
-      if (score >= 60) return 'elevated';  // orange
-      if (score >= 40) return 'medium';    // yellow
-      return 'low';                       // green
+      if (score > 75) return 'high';       // red
+      if (score >= 50) return 'elevated';  // orange
+      if (score >= 25) return 'medium';    // yellow
+      return 'low';                        // green
     };
 
     highScores.forEach((program, index) => {

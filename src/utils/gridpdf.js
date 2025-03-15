@@ -70,22 +70,19 @@ const formatDate = (dateStr, language) => {
 
 // Get score level based on score value - match logic from data/programs.js
 const getScoreLevel = (score) => {
-  if (score >= 75) return 'high';       // red
+  if (score > 75) return 'high';       // red
   if (score >= 50) return 'elevated';  // orange
   if (score >= 25) return 'medium';    // yellow
   return 'low';                        // green
 };
 
-export const generateGridPDF = (userData, sortedPrograms, language, translations, id) => {
+export const generateGridPDF = async (userData, sortedPrograms, language, translations, id) => {
   try {
     console.log('Starting Grid PDF generation...');
     
     if (!sortedPrograms || !userData) {
       throw new Error('No results available');
     }
-
-    // Create filename
-    const filename = createSafeFilename(userData, 'grid');
 
     const doc = new jsPDF({
       orientation: 'portrait',
