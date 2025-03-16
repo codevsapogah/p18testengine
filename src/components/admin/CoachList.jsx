@@ -49,8 +49,8 @@ const translations = {
     kz: 'Жою'
   },
   searchPlaceholder: {
-    ru: 'Поиск по имени или email',
-    kz: 'Аты немесе email бойынша іздеу'
+    ru: 'Поиск по имени, email или телефону',
+    kz: 'Аты, email немесе телефон бойынша іздеу'
   },
   showAdmins: {
     ru: 'Показать администраторов',
@@ -132,7 +132,8 @@ const CoachList = () => {
   const filteredCoaches = coaches.filter(coach => {
     const matchesSearch = 
       (coach.name && coach.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (coach.email && coach.email.toLowerCase().includes(searchTerm.toLowerCase()));
+      (coach.email && coach.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (coach.phone && coach.phone.includes(searchTerm));
     
     const matchesRoleFilter = showAdmins ? true : !coach.is_admin;
     

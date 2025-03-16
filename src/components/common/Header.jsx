@@ -1,9 +1,10 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LanguageContext } from '../../contexts/LanguageContext';
 import AuthContext from '../../contexts/AuthContext';
 import LanguageToggle from './LanguageToggle';
 import logo from '../../assets/logo192.png';
+import { supabase } from '../../supabase';
 
 const translations = {
   forCoaches: {
@@ -35,6 +36,36 @@ const Header = () => {
   const searchParams = new URLSearchParams(location.search);
   const showCoachButton = searchParams.has('coach');
   const showAdminButton = searchParams.has('admin');
+  const [displayName, setDisplayName] = useState(null);
+  
+  // Fetch name from approved_coaches table if needed
+  useEffect(() => {
+    if (user && user.email && !user.name && (role === 'admin' || role === 'coach')) {
+      const fetchCoachName = async () => {
+        try {
+          const { data } = await supabase
+            .from('approved_coaches')
+            .select('name')
+            .ilike('email', user.email.toLowerCase())
+            .single();
+            
+          if (data && data.name) {
+            console.log('Found name in approved_coaches:', data.name);
+            setDisplayName(data.name);
+          }
+        } catch (err) {
+          console.error('Error fetching coach name:', err);
+        }
+      };
+      
+      fetchCoachName();
+    } else if (user && user.name) {
+      setDisplayName(user.name);
+    }
+  }, [user, role]);
+  
+  // Format for display: use displayName if available, otherwise fall back to user?.name or user?.email
+  const userDisplayName = displayName || user?.name || user?.email;
   
   return (
     <header className="bg-white shadow-sm">
@@ -58,7 +89,7 @@ const Header = () => {
             {isAuthenticated() ? (
               <div className="flex items-center space-x-4">
                 <span className="text-gray-600 max-w-[160px] truncate">
-                  {user?.name || user?.email}
+                  {userDisplayName}
                 </span>
                 
                 {role === 'admin' && (
@@ -115,7 +146,7 @@ const Header = () => {
             </div>
             {isAuthenticated() && (
               <span className="text-gray-600 max-w-[200px] truncate text-right ml-auto">
-                {user?.name || user?.email}
+                {userDisplayName}
               </span>
             )}
           </div>
@@ -177,7 +208,7 @@ const Header = () => {
             
             {isAuthenticated() && (
               <span className="text-gray-600 max-w-[160px] truncate text-right">
-                {user?.name || user?.email}
+                {userDisplayName}
               </span>
             )}
           </div>

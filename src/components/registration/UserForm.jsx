@@ -27,7 +27,7 @@ const translations = {
   },
   phone: {
     ru: 'Номер телефона',
-    kz: 'Телефон нөмірі'
+    kz: 'Телефон нөірі'
   },
   email: {
     ru: 'Ваш email',
@@ -54,8 +54,8 @@ const translations = {
     kz: 'coach@email.com'
   },
   consent: {
-    ru: 'Результаты тестирования будут отправлены вам и вашему коучу по электронной почте. Важно понимать, что тесты не диагностируют наличие расстройств или отклонений. Только профессиональный коуч, прошедший специальную подготовку, может правильно интерпретировать эти результаты. Некорректное толкование может привести к ошибочным выводам. На следующей встрече ваш коуч поможет вам разобраться в результатах и определить оптимальное направление для дальнейшей работы.',
-    kz: 'Тестілеу нәтижелері сізге және сіздің коучыңызға электронды пошта арқылы жіберіледі. Тесттер бұзылыстарды немесе ауытқуларды анықтамайтынын түсіну маңызды. Бұл нәтижелерді тек арнайы дайындықтан өткен кәсіби коуч қана дұрыс түсіндіре алады. Дұрыс емес түсіндіру қате қорытындыларға әкелуі мүмкін. Келесі кездесуде сіздің коучыңыз сізге нәтижелерді түсінуге және әрі қарай жұмыс істеудің тиімді бағытын анықтауға көмектеседі.'
+    ru: 'Результаты тестирования будут отправлены вам и вашему коучу по электронной почте. Важно понимать, что тесты не диагностируют наличие расстройств или отклонений. Только профессиональный коуч, прошедший специальную подготовку, может правильно интерпретировать эти результаты. Некорректное толкование может привести к ошибочным выводам. На следующей встрече ваш коуч поможет вам разобраться в результатах и определить оптимальное направление для дальнейшей работы.\n\nПоставив галочку вы соглашаетесь с тем, что мы отправим ваши результаты на указанную вами почту и вашему коучу, а также напишем по указанному телефону в рамках промо-рассылок.',
+    kz: 'Тестілеу нәтижелері сізге және сіздің коучыңызға электронды пошта арқылы жіберіледі. Тесттер бұзылыстарды немесе ауытқуларды анықтамайтынын түсіну маңызды. Бұл нәтижелерді тек арнайы дайындықтан өткен кәсіби коуч қана дұрыс түсіндіре алады. Дұрыс емес түсіндіру қате қорытындыларға әкелуі мүмкін. Келесі кездесуде сіздің коучыңыз сізге нәтижелерді түсінуге және әрі қарай жұмыс істеудің тиімді бағытын анықтауға көмектеседі.\n\nҚұсбелгі қойып, біз сіздің нәтижелеріңізді көрсетілген электрондық поштаға және сіздің коучыңызға жіберетінімізге, сондай-ақ промо-хабарламалар аясында көрсетілген телефон нөміріне жазатынымызға келісесіз.'
   }
 };
 
@@ -116,25 +116,83 @@ const UserForm = () => {
     setError('');
     
     try {
+      // First, try to find existing user or create new one
+      const { data: existingUser, error: userLookupError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', formData.user_email)
+        .single();
+
+      let userId;
+      
+      if (userLookupError) {
+        // User doesn't exist, create new one
+        const { data: newUser, error: createUserError } = await supabase
+          .from('users')
+          .insert([{ 
+            email: formData.user_email
+          }])
+          .select('id')
+          .single();
+          
+        if (createUserError) throw createUserError;
+        userId = newUser.id;
+      } else {
+        userId = existingUser.id;
+      }
+
+      // Add entry to user_details_history
+      const { error: historyError } = await supabase
+        .from('user_details_history')
+        .insert([{
+          user_id: userId,
+          name: formData.user_name,
+          phone: formData.user_phone
+        }]);
+
+      if (historyError) {
+        console.error('Error saving user details history:', historyError);
+      }
+
       const sessionId = Math.random().toString(36).substring(2, 15);
       
-      const { /* data not used */ error } = await supabase
+      // Get coach ID from email
+      const { data: coachData, error: coachError } = await supabase
+        .from('approved_coaches')
+        .select('id')
+        .eq('email', formData.coach_email)
+        .single();
+        
+      if (coachError) throw coachError;
+
+      const { error: quizError } = await supabase
         .from('quiz_results')
         .insert([
           { 
             id: sessionId,
-            user_name: formData.user_name,
-            user_phone: formData.user_phone,
-            user_email: formData.user_email,
-            coach_email: formData.coach_email,
+            user_id: userId,
+            coach_id: coachData.id,
             created_at: new Date(),
             is_random: false,
             answers: {},
-            language: language
+            language: language,
+            entered_name: formData.user_name,  // Store the entered name with the quiz result
+            entered_phone: formData.user_phone  // Store the entered phone with the quiz result
           }
         ]);
         
-      if (error) throw error;
+      console.log('Saving quiz result:', {
+        sessionId,
+        userId,
+        coachId: coachData.id,
+        name: formData.user_name,
+        phone: formData.user_phone
+      });
+        
+      if (quizError) {
+        console.error('Error saving quiz result:', quizError);
+        throw quizError;
+      }
       
       localStorage.setItem('quiz_session_id', sessionId);
       navigate('/test');

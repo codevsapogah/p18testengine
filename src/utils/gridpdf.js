@@ -184,7 +184,8 @@ export const generateGridPDF = async (userData, sortedPrograms, language, transl
     // Coach email if exists - adjust Y position
     if (userData.coach_email) {
       const coachY = textWidth > maxWidth ? 49 : 39;
-      doc.text(`Коуч: ${userData.coach_email}`, margin, coachY);
+      const coachName = userData.coachName || userData.coach_email;
+      doc.text(`Коуч: ${coachName}`, margin, coachY);
     }
     
     // Title - High Results

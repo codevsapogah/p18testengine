@@ -1,4 +1,4 @@
-import { generateGridPDF } from './gridpdf';
+import { generateGridPDF, createSafeFilename } from './gridpdf';
 import { supabase } from '../supabase';
 
 const MAILGUN_API_KEY = 'f9d8ae041eef7e641730ec3f3b1314b2-623424ea-4cf1a1a9';
@@ -89,59 +89,11 @@ const emailTemplates = {
   }
 };
 
-export const sendResultsEmail = async (userData, sortedPrograms, language, translations, id) => {
-  try {
-    // Generate PDF once
-    const pdfBlob = await generateGridPDF(userData, sortedPrograms, language, translations, id);
-    const resultUrl = `${window.location.origin}/results/grid/${id}?lang=${language}`;
-
-    // Create PDF attachment once
-    const pdfAttachment = new Blob([pdfBlob], { type: 'application/pdf' });
-
-    // Send email to user with PDF
-    await sendEmail({
-      to: userData.user_email,
-      subject: emailTemplates[language].user.subject,
-      html: emailTemplates[language].user.html(userData.user_name, resultUrl),
-      attachment: {
-        data: pdfAttachment,
-        filename: 'results.pdf'
-      }
-    });
-
-    // Send email to coach if exists
-    if (userData.coach_email) {
-      // Get coach name from approved_coaches table
-      const { data: coachData } = await supabase
-        .from('approved_coaches')
-        .select('name')
-        .eq('email', userData.coach_email)
-        .single();
-
-      if (coachData?.name) {
-        await sendEmail({
-          to: userData.coach_email,
-          subject: emailTemplates[language].coach.subject,
-          html: emailTemplates[language].coach.html(userData.user_name, resultUrl, coachData.name),
-          attachment: {
-            data: pdfAttachment,
-            filename: 'results.pdf'
-          }
-        });
-      }
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error sending results email:', error);
-    throw error;
-  }
-};
-
-const sendEmail = async ({ to, subject, html, attachment }) => {
+// Rename the main sendEmail function to sendEmailWithMailgun
+const sendEmailWithMailgun = async ({ to, subject, html, attachment }) => {
   try {
     const formData = new FormData();
-    formData.append('from', 'P18 <noreply@p18.kz>');
+    formData.append('from', `P18 <no-reply@${MAILGUN_DOMAIN}>`);
     formData.append('to', to);
     formData.append('subject', subject);
     formData.append('html', html);
@@ -162,31 +114,233 @@ const sendEmail = async ({ to, subject, html, attachment }) => {
       throw new Error(`Failed to send email: ${response.statusText}`);
     }
 
-    await response.json();
+    return true;
   } catch (error) {
-    console.error('Error in sendEmail:', error);
+    console.error('Error sending email via Mailgun:', error);
     throw error;
   }
 };
 
+// Update all references to use sendEmailWithMailgun instead of sendEmail
+export const sendResultsEmail = async (userData, sortedPrograms, language, translations, id) => {
+  try {
+    // Generate PDF once
+    const pdfBlob = await generateGridPDF(userData, sortedPrograms, language, translations, id);
+    const resultUrl = `${window.location.origin}/results/grid/${id}?lang=${language}`;
+
+    // Create PDF attachment once
+    const pdfAttachment = new Blob([pdfBlob], { type: 'application/pdf' });
+    
+    // Create a safe filename
+    const filename = createSafeFilename(userData, 'grid');
+
+    // Send email to user with PDF
+    await sendEmailWithMailgun({
+      to: userData.user_email,
+      subject: emailTemplates[language].user.subject,
+      html: emailTemplates[language].user.html(userData.user_name, resultUrl),
+      attachment: {
+        data: pdfAttachment,
+        filename: `${filename}.pdf`
+      }
+    });
+
+    // Send email to coach if exists
+    if (userData.coach_email) {
+      // Get coach name from approved_coaches table
+      const { data: coachData, error: coachError } = await supabase
+        .from('approved_coaches')
+        .select('name')
+        .eq('email', userData.coach_email)
+        .single();
+
+      // Only send if coach exists in approved_coaches
+      if (coachData && !coachError) {
+        await sendEmailWithMailgun({
+          to: userData.coach_email,
+          subject: emailTemplates[language].coach.subject,
+          html: emailTemplates[language].coach.html(userData.user_name, resultUrl, coachData.name || userData.coach_email),
+          attachment: {
+            data: pdfAttachment,
+            filename: `${filename}.pdf`
+          }
+        });
+      } else {
+        console.log('Skipping coach email - not found in approved_coaches:', userData.coach_email);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending results email:', error);
+    throw error;
+  }
+};
+
+export const sendEmail = async (quizId) => {
+  try {
+    // Get quiz data with user and coach information
+    const { data: quizData, error: quizError } = await supabase
+      .from('quiz_results')
+      .select(`
+        *,
+        user:user_id (
+          email
+        ),
+        coach:coach_id (
+          name,
+          email
+        )
+      `)
+      .eq('id', quizId)
+      .single();
+
+    if (quizError) throw quizError;
+
+    // Map data to maintain compatibility
+    const userData = {
+      ...quizData,
+      user_name: quizData.entered_name || '—',
+      user_email: quizData.user?.email,
+      user_phone: quizData.entered_phone || '—',
+      coach_email: quizData.coach?.email,
+      coachName: quizData.coach?.name
+    };
+
+    // Send email to user
+    if (userData.user?.email) {
+      await sendEmailToUser(userData);
+    }
+
+    // Send email to coach
+    if (userData.coach?.email) {
+      // Get coach name from approved_coaches table
+      const { data: coachData } = await supabase
+        .from('approved_coaches')
+        .select('name')
+        .eq('email', userData.coach.email)
+        .single();
+
+      await sendEmailToCoach({
+        ...userData,
+        coachName: coachData?.name || userData.coach.email
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in sendEmail:', error);
+    return false;
+  }
+};
+
+const sendEmailToUser = async (userData) => {
+  try {
+    // Generate PDF once
+    const pdfBlob = await generateGridPDF(userData, [], '', [], userData.id);
+    const resultUrl = `${window.location.origin}/results/grid/${userData.id}?lang=${userData.language}`;
+
+    // Create PDF attachment once
+    const pdfAttachment = new Blob([pdfBlob], { type: 'application/pdf' });
+    
+    // Create a safe filename
+    const filename = createSafeFilename(userData, 'grid');
+
+    // Send email to user with PDF
+    await sendEmailWithMailgun({
+      to: userData.user_email,
+      subject: emailTemplates[userData.language].user.subject,
+      html: emailTemplates[userData.language].user.html(userData.user_name, resultUrl),
+      attachment: {
+        data: pdfAttachment,
+        filename: `${filename}.pdf`
+      }
+    });
+  } catch (error) {
+    console.error('Error in sendEmailToUser:', error);
+    throw error;
+  }
+};
+
+const sendEmailToCoach = async (userData) => {
+  try {
+    // Generate PDF once
+    const pdfBlob = await generateGridPDF(userData, [], '', [], userData.id);
+    const resultUrl = `${window.location.origin}/results/grid/${userData.id}?lang=${userData.language}`;
+
+    // Create PDF attachment once
+    const pdfAttachment = new Blob([pdfBlob], { type: 'application/pdf' });
+    
+    // Create a safe filename
+    const filename = createSafeFilename(userData, 'grid');
+
+    // Send email to coach with PDF
+    await sendEmailWithMailgun({
+      to: userData.coach_email,
+      subject: emailTemplates[userData.language].coach.subject,
+      html: emailTemplates[userData.language].coach.html(userData.user_name, resultUrl, userData.coachName),
+      attachment: {
+        data: pdfAttachment,
+        filename: `${filename}.pdf`
+      }
+    });
+  } catch (error) {
+    console.error('Error in sendEmailToCoach:', error);
+    throw error;
+  }
+};
+
+// Update sendTestEmail to use sendEmailWithMailgun
 export const sendTestEmail = async (email, language, userData, sortedPrograms, translations, id) => {
   try {
     // Generate PDF for test
     const pdfBlob = await generateGridPDF(userData, sortedPrograms, language, translations, id);
     const testUrl = `${window.location.origin}/results/grid/${id}?lang=${language}`;
-
-    // Create PDF attachment
     const pdfAttachment = new Blob([pdfBlob], { type: 'application/pdf' });
+    const filename = createSafeFilename(userData, 'grid');
     
-    await sendEmail({
+    console.log('Sending test emails to:', {
+      user: email,
+      coach: userData.coach_email,
+      userData
+    });
+
+    // Send to user
+    await sendEmailWithMailgun({
       to: email,
       subject: emailTemplates[language].user.subject,
       html: emailTemplates[language].user.html(userData.user_name, testUrl),
       attachment: {
         data: pdfAttachment,
-        filename: 'results.pdf'
+        filename: `${filename}.pdf`
       }
     });
+
+    // Send to coach if exists
+    if (userData.coach_email) {
+      const { data: coachData, error: coachError } = await supabase
+        .from('approved_coaches')
+        .select('name')
+        .eq('email', userData.coach_email)
+        .single();
+
+      console.log('Coach data:', coachData);
+
+      // Only send if coach exists in approved_coaches
+      if (coachData && !coachError) {
+        await sendEmailWithMailgun({
+          to: userData.coach_email,
+          subject: emailTemplates[language].coach.subject,
+          html: emailTemplates[language].coach.html(userData.user_name, testUrl, coachData.name || userData.coach_email),
+          attachment: {
+            data: pdfAttachment,
+            filename: `${filename}.pdf`
+          }
+        });
+      } else {
+        console.log('Skipping coach test email - not found in approved_coaches:', userData.coach_email);
+      }
+    }
 
     return true;
   } catch (error) {

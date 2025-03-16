@@ -167,6 +167,7 @@ const AdminPage = () => {
             {/* Line 2: Tools, Back, Language toggle | Logout button */}
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">
+                <LanguageToggle />
                 <button
                   onClick={() => setShowTools(!showTools)}
                   className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded hover:bg-indigo-200"
@@ -181,7 +182,6 @@ const AdminPage = () => {
                     {language === 'ru' ? 'На главную' : 'Басты бетке'}
                   </button>
                 )}
-                <LanguageToggle />
               </div>
               <button
                 onClick={logout}

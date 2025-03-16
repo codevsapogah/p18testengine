@@ -99,7 +99,17 @@ const ResultReview = () => {
       try {
         const { data, error } = await supabase
           .from('quiz_results')
-          .select('*')
+          .select(`
+            *,
+            user:user_id (
+              email
+            ),
+            coach:coach_id (
+              name,
+              email,
+              phone
+            )
+          `)
           .eq('id', id)
           .single();
           
@@ -111,10 +121,20 @@ const ResultReview = () => {
           return;
         }
         
+        const mappedData = {
+          ...data,
+          user_name: data.entered_name || '—',
+          user_email: data.user?.email,
+          user_phone: data.entered_phone || '—',
+          coach_email: data.coach?.email,
+          coachName: data.coach?.name,
+          coachPhone: data.coach?.phone
+        };
+        
         const calculatedResults = calculateResults(data.answers);
         const resultsSummary = getResultsSummary(calculatedResults);
         
-        setUserData(data);
+        setUserData(mappedData);
         setResults(resultsSummary);
         setLoading(false);
       } catch (err) {

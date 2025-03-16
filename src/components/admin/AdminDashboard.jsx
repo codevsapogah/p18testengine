@@ -26,8 +26,8 @@ const translations = {
     kz: 'Барлық нәтижелер'
   },
   search: {
-    ru: 'Поиск по имени, email или программе',
-    kz: 'Аты, email немесе бағдарлама бойынша іздеу'
+    ru: 'Поиск по имени, email или телефону',
+    kz: 'Аты, email немесе телефон бойынша іздеу'
   },
   name: {
     ru: 'Имя',
@@ -180,15 +180,34 @@ const AdminDashboard = () => {
         // Fetch test results
         const { data: resultsData, error: resultsError } = await supabase
           .from('quiz_results')
-          .select('*')
+          .select(`
+            *,
+            user:user_id (
+              email
+            ),
+            coach:coach_id (
+              name,
+              email
+            )
+          `)
           .order('created_at', { ascending: false });
           
         if (resultsError) throw resultsError;
         
         console.log('Raw results:', resultsData);
         
+        // Map the data to maintain compatibility with existing code
+        const mappedResults = resultsData.map(result => ({
+          ...result,
+          user_name: result.entered_name || '—',
+          user_email: result.user?.email,
+          user_phone: result.entered_phone || '—',
+          coach_email: result.coach?.email,
+          coach_name: result.coach?.name
+        }));
+        
         // Filter completed tests - check for valid answers structure
-        const completedResults = resultsData?.filter(result => {
+        const completedResults = mappedResults?.filter(result => {
           // Check if answers exist and is an object
           if (!result.answers || typeof result.answers !== 'object') {
             return false;
@@ -315,12 +334,18 @@ const AdminDashboard = () => {
   const overallStats = useMemo(() => {
     let filteredResults = results;
     
+    // Apply date range filter
     if (analyticsStartDate || analyticsEndDate) {
       filteredResults = results.filter(result => {
         const resultDate = new Date(result.created_at);
         return (!analyticsStartDate || resultDate >= new Date(analyticsStartDate)) && 
                (!analyticsEndDate || resultDate <= new Date(analyticsEndDate + 'T23:59:59'));
       });
+    }
+
+    // Apply coach filter
+    if (selectedCoach) {
+      filteredResults = filteredResults.filter(result => result.coach_email === selectedCoach);
     }
 
     const totalStarted = filteredResults.length;
@@ -347,14 +372,14 @@ const AdminDashboard = () => {
       averageStarted,
       averageCompleted
     };
-  }, [results, analyticsStartDate, analyticsEndDate]);
+  }, [results, analyticsStartDate, analyticsEndDate, selectedCoach]);
   
   // Filter results based on search term and date
   const filteredResults = results.filter(result => {
-    const matchesSearch = 
-      (result.user_name && result.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (result.user_email && result.user_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (result.coach_email && result.coach_email.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = searchTerm === '' || 
+      (result.entered_name && result.entered_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (result.user?.email && result.user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (result.coach?.email && result.coach.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Check if the result's date is within the selected range
     const resultDate = new Date(result.created_at);
@@ -362,7 +387,7 @@ const AdminDashboard = () => {
                             (!endDate || resultDate <= new Date(endDate + 'T23:59:59'));
     
     // Add coach filter
-    const matchesCoach = !selectedCoach || result.coach_email === selectedCoach;
+    const matchesCoach = !selectedCoach || result.coach?.email === selectedCoach;
     
     return matchesSearch && matchesDateRange && matchesCoach;
   });
@@ -418,10 +443,6 @@ const AdminDashboard = () => {
   return (
     <div>
       <div className="mb-8 bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">{translations.title[language]}</h2>
-        </div>
-        
         {/* Dashboard stats cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="bg-blue-100 p-4 rounded-md">
@@ -512,7 +533,7 @@ const AdminDashboard = () => {
               </div>
 
               {/* Chart */}
-              <div className="h-[400px]">
+              <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analyticsData}>
                     <CartesianGrid strokeDasharray="3 3" />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LanguageContext } from '../contexts/LanguageContext';
 import { supabase } from '../supabase';
 import Header from '../components/common/Header';
@@ -126,8 +126,8 @@ const translations = {
     kz: 'Қолданушы email'
   },
   coachEmail: {
-    ru: 'Email коуча',
-    kz: 'Коуч email'
+    ru: 'Коуч',
+    kz: 'Коуч'
   },
   program: {
     ru: 'Программа',
@@ -404,10 +404,20 @@ const ListViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
 };
 
 // Function to fetch data from Supabase
-const fetchQuizResult = async (id) => {
+const fetchQuizResult = async (id, searchParams) => {
   const { data, error } = await supabase
     .from('quiz_results')
-    .select('*')
+    .select(`
+      *,
+      user:user_id (
+        email
+      ),
+      coach:coach_id (
+        name,
+        email,
+        phone
+      )
+    `)
     .eq('id', id)
     .single();
     
@@ -417,44 +427,33 @@ const fetchQuizResult = async (id) => {
     throw new Error('Results not found');
   }
   
-  return data;
-};
+  // Map the data to maintain compatibility with existing code
+  const userData = {
+    ...data,
+    user_name: data.entered_name || '—',
+    user_email: data.user?.email,
+    user_phone: data.entered_phone,
+    coach_email: data.coach?.email,
+    coachName: data.coach?.name,
+    coachPhone: data.coach?.phone
+  };
 
-// Function to fetch coach phone number
-const fetchCoachPhone = async (coachEmail) => {
-  if (!coachEmail) return null;
-  
-  try {
-    // Normalize the coach email to lowercase to handle different case variations
-    const normalizedEmail = coachEmail.toLowerCase();
-    
-    // Try to find coach with normalized email
-    const { data, error } = await supabase
+  // Get coach phone if needed
+  const coachEmail = userData.coach_email || searchParams.get('coach');
+  if (coachEmail) {
+    const { data: coachData } = await supabase
       .from('approved_coaches')
-      .select('phone')
-      .ilike('email', normalizedEmail)
+      .select('phone, name')
+      .eq('email', coachEmail)
       .single();
-      
-    if (!error && data?.phone) {
-      return data.phone;
+
+    if (coachData) {
+      userData.coachPhone = coachData.phone;
+      userData.coachName = coachData.name;
     }
-    
-    // If no coach found with that email, try the default coach
-    const defaultCoachEmail = 'kmektepbergen@gmail.com';
-    const { data: defaultCoach, error: defaultError } = await supabase
-      .from('approved_coaches')
-      .select('phone')
-      .ilike('email', defaultCoachEmail)
-      .single();
-      
-    if (!defaultError && defaultCoach?.phone) {
-      return defaultCoach.phone;
-    }
-  } catch (err) {
-    console.error('Error fetching coach phone:', err);
   }
   
-  return null;
+  return userData;
 };
 
 // Function to process results data for display
@@ -564,7 +563,7 @@ const ResultsPage = ({ view = 'grid' }) => {
   const { id } = useParams();
   const { language } = useContext(LanguageContext);
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
   
   const [currentView, setCurrentView] = useState(view);
   const [expandedProgram, setExpandedProgram] = useState(null);
@@ -573,7 +572,7 @@ const ResultsPage = ({ view = 'grid' }) => {
   // Use React Query to fetch results data
   const { data: userData, isLoading, error: fetchError } = useQuery({
     queryKey: ['quiz-result', id],
-    queryFn: () => fetchQuizResult(id),
+    queryFn: () => fetchQuizResult(id, searchParams),
     staleTime: Infinity, // Never refetch automatically
     retry: 1, // Only retry once on error
   });
@@ -603,18 +602,6 @@ const ResultsPage = ({ view = 'grid' }) => {
     // Consider "in progress" if created less than 2 hours ago
     return hoursSinceCreated < 2 && userData.answers && Object.keys(userData.answers).length > 0;
   }, [userData, isTestComplete]);
-  
-  // Use React Query to fetch coach phone based on user data
-  const { data: coachPhone } = useQuery({
-    queryKey: ['coach-phone', userData?.coach_email || searchParams.get('coach')],
-    queryFn: () => {
-      // Get the coach email from either user data or URL parameter
-      const coachEmail = userData?.coach_email || searchParams.get('coach');
-      return fetchCoachPhone(coachEmail);
-    },
-    enabled: !!userData, // Only run this query after userData is loaded
-    staleTime: Infinity,
-  });
   
   // Process results data with useMemo to prevent unnecessary recalculations
   const results = useMemo(() => {
@@ -671,10 +658,16 @@ const ResultsPage = ({ view = 'grid' }) => {
         throw new Error('No results available');
       }
 
+      // Include coach name in userData
+      const userDataWithCoachName = {
+        ...userData,
+        coachName: userData.coachName
+      };
+
       // Generate either grid or list PDF based on current view
       const pdfBlob = currentView === 'grid' 
-        ? await generateGridPDF(userData, sortedPrograms, language, translations, id)
-        : await generateListPDF(userData, sortedPrograms, language, translations, id);
+        ? await generateGridPDF(userDataWithCoachName, sortedPrograms, language, translations, id)
+        : await generateListPDF(userDataWithCoachName, sortedPrograms, language, translations, id);
       
       // Create a URL for the blob
       const url = window.URL.createObjectURL(pdfBlob);
@@ -703,10 +696,10 @@ const ResultsPage = ({ view = 'grid' }) => {
   };
   
   const getWhatsAppLink = () => {
-    if (!coachPhone) return '#';
+    if (!userData.coachPhone) return '#';
     
     // Clean phone number - remove all non-digit characters except the leading plus
-    let cleanPhone = coachPhone.trim();
+    let cleanPhone = userData.coachPhone.trim();
     
     // Ensure there's a plus at the beginning if not already there
     if (!cleanPhone.startsWith('+')) {
@@ -719,8 +712,8 @@ const ResultsPage = ({ view = 'grid' }) => {
     
     // Use appropriate text based on language
     const text = language === 'ru' 
-      ? 'Здравствуйте! Я прошел тест на психологическую программу и хотел бы получить консультацию.'
-      : 'Сәлеметсіз бе! Мен психологиялық бағдарлама тестінен өттім және консультация алғым келеді.';
+      ? 'Здравствуйте! Я прошел тест p18 и хотел бы получить разбор.'
+      : 'Сәлеметсіз бе! Мен p18 тестін тапсырдым және талдау алғым келеді.';
     
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
@@ -871,7 +864,7 @@ const ResultsPage = ({ view = 'grid' }) => {
                 {/* Title and user info */}
                 <div className="mb-6">
                   <h1 className="text-2xl sm:text-3xl font-bold mb-4">
-                    {userData.user_name}, {language === 'ru' ? 'вот ваши результаты теста P18' : 'сіздің P18 тестінің нәтижелері'}
+                    {userData.entered_name || '—'}, {language === 'ru' ? 'вот ваши результаты теста P18' : 'сіздің P18 тестінің нәтижелері'}
                   </h1>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -879,11 +872,11 @@ const ResultsPage = ({ view = 'grid' }) => {
                       <span>{formatDate(userData.created_at, language)}</span>
                     </div>
                     <div className="flex items-center">
-                      <span>Email: {userData.user_email}</span>
+                      <span>{userData.user?.email}</span>
                     </div>
                     {userData.coach_email && (
                       <div className="flex items-center">
-                        <span>{translations.coachEmail[language]}: {userData.coach_email}</span>
+                        <span>{translations.coachEmail[language]}: {userData.coachName || userData.coach_email}</span>
                       </div>
                     )}
                   </div>

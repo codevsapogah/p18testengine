@@ -142,11 +142,33 @@ const CoachDashboard = () => {
   // Fetch clients assigned to this coach - using useCallback to memoize
   const fetchClients = useCallback(async () => {
     try {
+      // First get the coach's ID
+      const { data: coachData, error: coachError } = await supabase
+        .from('approved_coaches')
+        .select('id')
+        .eq('email', user?.email)
+        .single();
+
+      if (coachError) throw coachError;
+
+      // Then get quiz results with user information
       const { data, error } = await supabase
         .from('quiz_results')
-        .select('*')
-        .eq('coach_email', user?.email)
+        .select(`
+          *,
+          user:user_id (
+            email
+          ),
+          coach:coach_id (
+            name,
+            email,
+            phone
+          )
+        `)
+        .eq('coach_id', coachData.id)
         .order('created_at', { ascending: false });
+        
+      console.log('Raw quiz results:', data);
         
       if (error) throw error;
       
@@ -159,7 +181,15 @@ const CoachDashboard = () => {
         
         // Check if it has at least some questions answered
         return Object.keys(result.answers).length > 0;
-      });
+      }).map(result => ({
+        ...result,
+        // Map user data to maintain compatibility with existing code
+        user_name: result.entered_name || '—',
+        user_email: result.user?.email,
+        user_phone: result.entered_phone || '—'
+      }));
+      
+      console.log('Processed quiz results:', completedData);
       
       // Determine test status for each result
       const resultsWithStatus = completedData.map(result => {
@@ -213,9 +243,9 @@ const CoachDashboard = () => {
   // Filter clients based on search term, reviewed status, and date
   const filteredClients = clients.filter(client => {
     const matchesSearch = 
-      (client.user_name && client.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.user_email && client.user_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.user_phone && client.user_phone.includes(searchTerm));
+      (client.entered_name && client.entered_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.user?.email && client.user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.entered_phone && client.entered_phone.includes(searchTerm));
     
     const matchesReviewFilter = hideReviewed ? !client.review_status : true;
     
@@ -288,10 +318,6 @@ const CoachDashboard = () => {
   return (
     <div>
       <div className="mb-8 bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">{translations.title[language]}</h2>
-        </div>
-        
         {/* Search and Filter Controls - Responsive layout */}
         <div className="space-y-4 mb-6">
           {/* Desktop & Tablet - Two columns */}

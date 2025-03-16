@@ -9,6 +9,7 @@ import Loading from '../components/common/Loading';
 import Question from '../components/test/Question';
 import ProgressBar from '../components/test/ProgressBar';
 import { calculateResults } from '../utils/calculateResults';
+import { sendResultsEmail } from '../utils/emailService';
 
 const translations = {
   error: {
@@ -239,14 +240,31 @@ const TestPage = () => {
       // Calculate results before navigating
       const { data, error } = await supabase
         .from('quiz_results')
-        .select('answers, user_name, user_email, coach_email')
+        .select(`
+          *,
+          user:user_id (
+            name,
+            email
+          ),
+          coach:coach_id (
+            email
+          )
+        `)
         .eq('id', sessionId)
         .single();
         
       if (error) throw error;
       
+      // Map the data to maintain compatibility
+      const mappedData = {
+        ...data,
+        user_name: data.user?.name,
+        user_email: data.user?.email,
+        coach_email: data.coach?.email
+      };
+      
       // Calculate the results using the utility function
-      const calculatedResults = calculateResults(data.answers);
+      const calculatedResults = calculateResults(mappedData.answers);
       
       // Store the calculated results in the database
       const { error: updateError } = await supabase
@@ -266,63 +284,12 @@ const TestPage = () => {
       navigate(`/results/grid/${sessionId}`);
       
       // Send emails in the background with delay
-      setTimeout(() => {
-      // Send email to client
-      if (data.user_email) {
+      setTimeout(async () => {
         try {
-            console.log('Sending delayed email to client:', data.user_email);
-            fetch(`${process.env.REACT_APP_API_URL}/email/completion`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              quizId: sessionId,
-              clientEmail: data.user_email,
-              clientName: data.user_name || 'Client',
-              language
-            })
-            }).then(response => {
-          if (!response.ok) {
-                console.warn('Failed to send client email notification');
-          } else {
-            console.log('Client email notification sent successfully');
-          }
-            }).catch(emailErr => {
-              console.warn('Error sending client email:', emailErr);
-            });
+          // Send email to client and coach
+          await sendResultsEmail(mappedData, [], language, {}, sessionId);
         } catch (emailErr) {
-            console.warn('Error setting up client email:', emailErr);
-        }
-      }
-      
-      // Send email to coach
-      if (data.coach_email) {
-        try {
-            console.log('Sending delayed email to coach:', data.coach_email);
-            fetch(`${process.env.REACT_APP_API_URL}/email/notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              quizId: sessionId,
-              clientName: data.user_name || 'Client',
-              coachEmail: data.coach_email,
-              language
-            })
-            }).then(response => {
-          if (!response.ok) {
-                console.warn('Failed to send coach notification');
-          } else {
-            console.log('Coach notification sent successfully');
-          }
-            }).catch(emailErr => {
-              console.warn('Error sending coach notification:', emailErr);
-            });
-        } catch (emailErr) {
-            console.warn('Error setting up coach notification:', emailErr);
-          }
+          console.warn('Error sending emails:', emailErr);
         }
       }, 30000); // 30 second delay
       
