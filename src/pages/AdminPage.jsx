@@ -5,6 +5,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import CoachForm from '../components/admin/CoachForm';
 import CoachList from '../components/admin/CoachList';
+import FinancialDashboard from '../components/admin/FinancialDashboard';
 import ResultReview from '../components/coach/ResultReview';
 import LanguageToggle from '../components/common/LanguageToggle';
 import { recalculateAllResults, recalculateSingleResult } from '../utils/recalculateResults';
@@ -64,6 +65,10 @@ const AdminPage = () => {
     navigate('/admin/dashboard');
   };
 
+  const handleNavigateToFinance = () => {
+    navigate('/admin/finance');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
@@ -90,6 +95,12 @@ const AdminPage = () => {
                 className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
               >
                 {language === 'ru' ? 'Инструменты' : 'Құралдар'}
+              </button>
+              <button
+                onClick={handleNavigateToFinance}
+                className="ml-4 px-3 py-2 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+              >
+                {language === 'ru' ? 'Финансы' : 'Қаржы'}
               </button>
             </div>
             
@@ -131,6 +142,12 @@ const AdminPage = () => {
                   className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded hover:bg-indigo-200"
                 >
                   {language === 'ru' ? 'Инструменты' : 'Құралдар'}
+                </button>
+                <button
+                  onClick={handleNavigateToFinance}
+                  className="ml-2 px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded hover:bg-yellow-200"
+                >
+                  {language === 'ru' ? 'Финансы' : 'Қаржы'}
                 </button>
               </div>
               <span className="text-gray-600 max-w-[200px] truncate text-right">
@@ -182,6 +199,12 @@ const AdminPage = () => {
                     {language === 'ru' ? 'На главную' : 'Басты бетке'}
                   </button>
                 )}
+                <button
+                  onClick={handleNavigateToFinance}
+                  className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded hover:bg-yellow-200"
+                >
+                  {language === 'ru' ? 'Финансы' : 'Қаржы'}
+                </button>
               </div>
               <button
                 onClick={logout}
@@ -298,6 +321,7 @@ const AdminPage = () => {
           <Route path="coaches/add" element={<CoachForm />} />
           <Route path="coaches/edit/:id" element={<CoachForm />} />
           <Route path="results/:id" element={<ResultReview />} />
+          <Route path="finance" element={<FinancialDashboard />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Routes>
       </main>

@@ -156,6 +156,14 @@ const translations = {
   analyticsDateRange: {
     ru: 'Период аналитики',
     kz: 'Талдау кезеңі'
+  },
+  finances: {
+    ru: 'Финансы',
+    kz: 'Қаржы'
+  },
+  viewFinancials: {
+    ru: 'Просмотр финансов',
+    kz: 'Қаржыларды қарау'
   }
 };
 
@@ -443,39 +451,70 @@ const AdminDashboard = () => {
   return (
     <div>
       <div className="mb-8 bg-white rounded-lg shadow-md p-6">
-        {/* Dashboard stats cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-100 p-4 rounded-md">
-            <div className="text-blue-800 font-medium">{translations.totalTests[language]}</div>
-            <div className="text-3xl font-bold mb-2">{results.length}</div>
-          </div>
-          
-          <div className="bg-green-100 p-4 rounded-md">
-            <div className="text-green-800 font-medium">{translations.totalCoaches[language]}</div>
-            <div className="text-3xl font-bold mb-2">{coaches.length}</div>
-            <Link
-              to="/admin/coaches" 
-              className="text-green-600 hover:underline text-sm"
-            >
-              {translations.manageCoaches[language]}
-            </Link>
-          </div>
-          
-          <div className="bg-indigo-100 p-4 rounded-md">
-            <div className="text-indigo-800 font-medium">{translations.latestResult[language]}</div>
-            <div className="text-xl font-bold truncate mb-2">
-              {results.length > 0 ? results[0].user_name || '—' : '—'}
+        {/* Cards Section */}
+        <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
+          {/* Total Tests Card */}
+          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
+            <div className="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
             </div>
-            {results.length > 0 && (
-              <Link
-                to={`/results/grid/${results[0].id}?lang=${language}`}
-                className="px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm whitespace-nowrap inline-block min-w-[140px] h-10 flex items-center justify-center"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-600">{translations.totalTests[language]}</p>
+              <p className="text-lg font-semibold text-gray-700">{results.length}</p>
+              <Link to="/admin/dashboard" className="text-sm text-blue-500 hover:underline">{translations.viewAll[language]}</Link>
+            </div>
+          </div>
+
+          {/* Total Coaches Card */}
+          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
+            <div className="p-3 mr-4 text-green-500 bg-green-100 rounded-full">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+              </svg>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-600">{translations.totalCoaches[language]}</p>
+              <p className="text-lg font-semibold text-gray-700">{coaches.length}</p>
+              <Link to="/admin/coaches" className="text-sm text-blue-500 hover:underline">{translations.viewAll[language]}</Link>
+            </div>
+          </div>
+
+          {/* Latest Result Card */}
+          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
+            <div className="p-3 mr-4 text-purple-500 bg-purple-100 rounded-full">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-600">{translations.latestResult[language]}</p>
+              <p className="text-lg font-semibold text-gray-700">
+                {results.length > 0 ? results[0].user_name || '—' : '—'}
+              </p>
+              <Link to={results.length > 0 ? `/admin/results/${results[0].id}` : '#'} className="text-sm text-blue-500 hover:underline">
                 {translations.viewResults[language]}
               </Link>
-            )}
+            </div>
+          </div>
+
+          {/* Finances Card */}
+          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
+            <div className="p-3 mr-4 text-yellow-500 bg-yellow-100 rounded-full">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-600">{translations.finances[language]}</p>
+              <p className="text-lg font-semibold text-gray-700">
+                -
+              </p>
+              <Link to="/admin/finance" className="text-sm text-blue-500 hover:underline">
+                {translations.viewFinancials[language]}
+              </Link>
+            </div>
           </div>
         </div>
         

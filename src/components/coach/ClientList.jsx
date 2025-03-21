@@ -36,7 +36,7 @@ const translations = {
   }
 };
 
-const ClientList = ({ clients, language, onReviewStatusChange }) => {
+const ClientList = ({ clients, language, onReviewStatusChange, coachButtonTextRu, coachButtonTextKz }) => {
   if (clients.length === 0) {
     return (
       <div className="p-6 text-center text-gray-500">
@@ -98,7 +98,9 @@ const ClientList = ({ clients, language, onReviewStatusChange }) => {
                   to={`/coach/results/${client.id}`}
                   className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm"
                 >
-                  {translations.viewResult[language]}
+                  {language === 'ru' 
+                    ? (coachButtonTextRu || translations.viewResult[language])
+                    : (coachButtonTextKz || translations.viewResult[language])}
                 </Link>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-center">

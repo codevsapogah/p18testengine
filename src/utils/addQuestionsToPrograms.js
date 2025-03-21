@@ -5,8 +5,6 @@
 
 import { questions } from '../data/questions';
 import { programs as originalPrograms } from '../data/programData';
-import fs from 'fs';
-import path from 'path';
 
 // Function to extract question IDs for each program
 const mapQuestionsToPrograms = () => {
@@ -99,9 +97,12 @@ export const getProgramQuestionsMapping = () => {
   return mapQuestionsToPrograms();
 };
 
-export default {
+// Create a named object for the default export
+const questionProgramUtils = {
   mapQuestionsToPrograms,
   generateUpdatedProgramData,
   updateProgramDataFile,
   getProgramQuestionsMapping
-}; 
+};
+
+export default questionProgramUtils; 

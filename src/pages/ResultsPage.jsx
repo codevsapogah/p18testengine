@@ -415,7 +415,9 @@ const fetchQuizResult = async (id, searchParams) => {
       coach:coach_id (
         name,
         email,
-        phone
+        phone,
+        button_text_ru,
+        button_text_kz
       )
     `)
     .eq('id', id)
@@ -435,7 +437,9 @@ const fetchQuizResult = async (id, searchParams) => {
     user_phone: data.entered_phone,
     coach_email: data.coach?.email,
     coachName: data.coach?.name,
-    coachPhone: data.coach?.phone
+    coachPhone: data.coach?.phone,
+    coachButtonTextRu: data.coach?.button_text_ru,
+    coachButtonTextKz: data.coach?.button_text_kz
   };
 
   // Get coach phone if needed
@@ -443,13 +447,15 @@ const fetchQuizResult = async (id, searchParams) => {
   if (coachEmail) {
     const { data: coachData } = await supabase
       .from('approved_coaches')
-      .select('phone, name')
+      .select('phone, name, button_text_ru, button_text_kz')
       .eq('email', coachEmail)
       .single();
 
     if (coachData) {
       userData.coachPhone = coachData.phone;
       userData.coachName = coachData.name;
+      userData.coachButtonTextRu = coachData.button_text_ru;
+      userData.coachButtonTextKz = coachData.button_text_kz;
     }
   }
   
@@ -458,20 +464,33 @@ const fetchQuizResult = async (id, searchParams) => {
 
 // Function to process results data for display
 const processResults = (data) => {
-  // Use pre-calculated results if available
+  // Use pre-calculated results if available and no negative values
   if (data.calculated_results) {
-    console.log('Using pre-calculated results');
+    console.log('Checking pre-calculated results');
     
     // Extract just the scores for the results state
     const scores = {};
+    let hasNegative = false;
+    
     Object.entries(data.calculated_results).forEach(([programId, result]) => {
       scores[programId] = result.score;
+      // Check if any score is negative
+      if (result.score < 0) {
+        hasNegative = true;
+        console.log(`Found negative score for program ${programId}: ${result.score}`);
+      }
     });
     
-    return scores;
+    // If no negative scores, use the pre-calculated results
+    if (!hasNegative) {
+      console.log('Using pre-calculated results - no negative values found');
+      return scores;
+    }
+    
+    console.log('Found negative values in pre-calculated results, recalculating...');
   }
   
-  console.log('No pre-calculated results found, calculating on client');
+  console.log('Calculating results on client');
   
   // Create program mapping - which questions belong to which program
   const programMapping = {};
@@ -496,8 +515,8 @@ const processResults = (data) => {
         ? data.answers[questionId - 1] // Array is 0-based, so subtract 1
         : data.answers?.[questionId];
       
-      // Use raw answer value without adjustment
-      const numericAnswer = Number(answer || 0);
+      // Use raw answer value without adjustment, ensure it's not negative
+      const numericAnswer = Math.max(0, Number(answer || 0));
       
       sum += numericAnswer;
     });
@@ -518,6 +537,9 @@ const processResults = (data) => {
       // Subtract 1 point per question to match the calculation in calculateResults.js
       percentageScore = ((sum - questionIds.length) / 25) * 100;
     }
+    
+    // Ensure no negative percentages
+    percentageScore = Math.max(0, percentageScore);
     
     // Determine category with explicit ranges
     let category;
@@ -550,6 +572,8 @@ const processResults = (data) => {
       .then(({ error }) => {
         if (error) {
           console.error('Error storing calculated results:', error);
+        } else {
+          console.log('Successfully stored recalculated results');
         }
       });
   } catch (err) {
@@ -971,7 +995,8 @@ const ResultsPage = ({ view = 'grid' }) => {
                     rel="noopener noreferrer"
                     className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium text-sm sm:text-base hover:bg-blue-50 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
-                    {translations.consultation[language]}
+                    {(searchParams.get('lang') === 'kz' ? userData.coachButtonTextKz : userData.coachButtonTextRu) || 
+                     translations.consultation[searchParams.get('lang') || language]}
                   </a>
                 </div>
               </div>

@@ -68,7 +68,9 @@ const CoachForm = () => {
     email: '',
     phone: '',
     password: '',
-    is_admin: false
+    is_admin: false,
+    button_text_ru: '',
+    button_text_kz: ''
   });
   
   const [loading, setLoading] = useState(id ? true : false);
@@ -96,7 +98,9 @@ const CoachForm = () => {
               email: data.email || '',
               phone: data.phone || '',
               password: data.password || '',
-              is_admin: data.is_admin || false
+              is_admin: data.is_admin || false,
+              button_text_ru: data.button_text_ru || '',
+              button_text_kz: data.button_text_kz || ''
             });
           }
           
@@ -157,7 +161,9 @@ const CoachForm = () => {
             email: formData.email,
             phone: formData.phone,
             password: formData.password,
-            is_admin: formData.is_admin
+            is_admin: formData.is_admin,
+            button_text_ru: formData.button_text_ru,
+            button_text_kz: formData.button_text_kz
           })
           .eq('id', id);
           
@@ -171,7 +177,9 @@ const CoachForm = () => {
             email: formData.email,
             phone: formData.phone,
             password: formData.password,
-            is_admin: formData.is_admin
+            is_admin: formData.is_admin,
+            button_text_ru: formData.button_text_ru,
+            button_text_kz: formData.button_text_kz
           }]);
           
         if (insertError) throw insertError;
@@ -308,6 +316,43 @@ const CoachForm = () => {
                 {translations.isAdmin[language]}
               </span>
             </label>
+          </div>
+          
+          {/* Custom Button Text Fields */}
+          <div className="col-span-6">
+            <label htmlFor="button_text_ru" className="block text-sm font-medium text-gray-700">
+              Текст кнопки (Русский)
+            </label>
+            <input
+              type="text"
+              name="button_text_ru"
+              id="button_text_ru"
+              value={formData.button_text_ru}
+              onChange={handleChange}
+              placeholder="Пользовательский текст для кнопки на русском"
+              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Пользовательский текст для кнопки "Записаться на разбор с коучем" на русском
+            </p>
+          </div>
+
+          <div className="col-span-6">
+            <label htmlFor="button_text_kz" className="block text-sm font-medium text-gray-700">
+              Түйме мәтіні (Қазақша)
+            </label>
+            <input
+              type="text"
+              name="button_text_kz"
+              id="button_text_kz"
+              value={formData.button_text_kz}
+              onChange={handleChange}
+              placeholder="Қазақша түйменің арнаулы мәтіні"
+              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              "Коучпен консультацияға жазылу" түймесінің арнаулы мәтіні қазақша
+            </p>
           </div>
           
           <div className="flex justify-end space-x-4">

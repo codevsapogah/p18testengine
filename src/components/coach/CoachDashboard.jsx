@@ -145,7 +145,7 @@ const CoachDashboard = () => {
       // First get the coach's ID
       const { data: coachData, error: coachError } = await supabase
         .from('approved_coaches')
-        .select('id')
+        .select('id, button_text_ru, button_text_kz')
         .eq('email', user?.email)
         .single();
 
@@ -162,7 +162,9 @@ const CoachDashboard = () => {
           coach:coach_id (
             name,
             email,
-            phone
+            phone,
+            button_text_ru,
+            button_text_kz
           )
         `)
         .eq('coach_id', coachData.id)
@@ -506,7 +508,9 @@ const CoachDashboard = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                           >
-                            {translations.viewResult[language]}
+                            {language === 'ru' 
+                              ? (client.coach?.button_text_ru || translations.viewResult[language])
+                              : (client.coach?.button_text_kz || translations.viewResult[language])}
                           </Link>
                           <a
                             href={`https://wa.me/${client.user_phone?.replace(/[^0-9]/g, '')}`}
@@ -554,7 +558,9 @@ const CoachDashboard = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {translations.viewResult[language]}
+                        {language === 'ru' 
+                          ? (client.coach?.button_text_ru || translations.viewResult[language])
+                          : (client.coach?.button_text_kz || translations.viewResult[language])}
                       </Link>
                     </div>
                   </div>
@@ -583,7 +589,9 @@ const CoachDashboard = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {translations.viewResult[language]}
+                        {language === 'ru' 
+                          ? (client.coach?.button_text_ru || translations.viewResult[language])
+                          : (client.coach?.button_text_kz || translations.viewResult[language])}
                       </Link>
                       <a
                         href={`https://wa.me/${client.user_phone?.replace(/[^0-9]/g, '')}`}
