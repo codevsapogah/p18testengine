@@ -183,6 +183,14 @@ const translations = {
   emailError: {
     ru: 'Ошибка отправки',
     kz: 'Жіберу қатесі'
+  },
+  resultsTitle: {
+    ru: 'вот ваши результаты теста P18',
+    kz: 'сіздің P18 тестінің нәтижелері'
+  },
+  coach: {
+    ru: 'Коуч',
+    kz: 'Коуч'
   }
 };
 
@@ -619,7 +627,7 @@ const ResultsPage = ({ view = 'grid' }) => {
     }
   };
 
-  // Query to fetch the data with React Query v5 object syntax
+  // Query to fetch the data
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['quiz_result', id, searchParams.toString()],
     queryFn: () => fetchQuizResult(id, searchParams),
@@ -851,7 +859,7 @@ const ResultsPage = ({ view = 'grid' }) => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
       
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow max-w-5xl mx-auto px-4 py-8">
         {isLoading ? (
           <div className="text-center py-16">
             <Loading message={translations.loading[language]} />
@@ -882,124 +890,63 @@ const ResultsPage = ({ view = 'grid' }) => {
           </div>
         ) : (
           <>
-            {/* New Purple Header Section */}
-            <div className="mb-8 bg-purple-600 rounded-lg shadow-md p-6 text-white">
-              <h1 className="text-2xl font-bold mb-4">
-                {data.user_name ? `${data.user_name}, ` : ''}
-                {language === 'ru' ? 'вот ваши результаты теста P18' : 'міне сіздің P18 тест нәтижелеріңіз'}
-              </h1>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div>
-                  {formatDate(data.created_at, language)}
-                </div>
-                <div>
-                  {data.user_email}
-                </div>
-                <div>
-                  {language === 'ru' ? 'Коуч: ' : 'Коуч: '}
-                  {data.coachName || 'Нурболат'}
+            {/* User info section */}
+            <div className="rounded-lg shadow-lg p-4 sm:p-6 mb-8 text-white" style={{ backgroundColor: 'rgb(107, 70, 193)' }}>
+              <div className="mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-4">
+                  {data.user_name}, {translations.resultsTitle[language]}
+                </h1>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="flex items-center">
+                    <span>{formatDate(data.created_at, language)}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span>{data.user_email}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span>{translations.coach[language]}: {data.coachName || data.coach_email}</span>
+                  </div>
                 </div>
               </div>
               
-              {/* Improved Tab Navigation */}
-              <div className="flex">
-                <div className="w-full grid grid-cols-2 gap-2">
-                  <button 
-                    onClick={() => currentViewState !== 'list' && toggleView()}
-                    className={`py-3 px-5 rounded-md text-center transition-colors ${
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                {/* View toggle buttons */}
+                <div className="flex rounded-lg overflow-hidden bg-white/20 shadow-inner">
+                  <button
+                    onClick={() => setCurrentViewState('list')}
+                    className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${
                       currentViewState === 'list' 
-                        ? 'bg-purple-500 text-white' 
-                        : 'bg-white text-purple-800'
+                        ? 'bg-white text-[rgb(107, 70, 193)]' 
+                        : 'text-white hover:bg-white/10'
                     }`}
+                    style={{ color: currentViewState === 'list' ? 'rgb(107, 70, 193)' : 'white' }}
                   >
                     {translations.listView[language]}
                   </button>
-                  
-                  <button 
-                    onClick={() => currentViewState !== 'grid' && toggleView()}
-                    className={`py-3 px-5 rounded-md text-center transition-colors ${
+                  <button
+                    onClick={() => setCurrentViewState('grid')}
+                    className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${
                       currentViewState === 'grid' 
-                        ? 'bg-purple-500 text-white' 
-                        : 'bg-white text-purple-800'
+                        ? 'bg-white text-[rgb(107, 70, 193)]' 
+                        : 'text-white hover:bg-white/10'
                     }`}
+                    style={{ color: currentViewState === 'grid' ? 'rgb(107, 70, 193)' : 'white' }}
                   >
                     {translations.gridView[language]}
                   </button>
                 </div>
                 
-                <div className="ml-2">
-                  <button
-                    onClick={handleDownloadPDF}
-                    className="flex items-center justify-center h-full w-full bg-white text-purple-800 rounded-md px-5 py-3 hover:bg-gray-100 transition-colors"
-                  >
-                    <span className="mr-2">↓</span>
-                    {translations.downloadPDF[language]}
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Legacy User Info Section (hidden in new design) */}
-            <div className="hidden mb-6 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                {translations.userInfo[language]}
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="mb-2">
-                    <span className="font-medium">{translations.name[language]}:</span> {data.user_name}
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-medium">{translations.email[language]}:</span> {data.user_email}
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-medium">{translations.phone[language]}:</span> {data.user_phone}
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-medium">{translations.date[language]}:</span> {formatDate(data.created_at, language)}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col">
-                  {/* Permalink section */}
-                  {permalinkUrl && (
-                    <div className="mb-4">
-                      <div className="font-medium mb-1">{translations.permalinkLabel[language]}</div>
-                      <div className="flex">
-                        <input
-                          type="text"
-                          value={permalinkUrl}
-                          readOnly
-                          className="flex-grow border rounded-l px-2 py-1 text-sm"
-                        />
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(permalinkUrl);
-                            // Show copied notification or feedback
-                          }}
-                          className="bg-gray-200 hover:bg-gray-300 px-2 rounded-r"
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Buttons */}
-                  <div className="flex flex-wrap gap-2 mt-auto">
-                    {/* Generate permalink button if not already shown */}
-                    {!permalinkUrl && (
-                      <button
-                        onClick={handleGeneratePermalink}
-                        className="px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm flex-grow"
-                      >
-                        {translations.permalink[language]}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                {/* Download PDF button */}
+                <button
+                  onClick={handleDownloadPDF}
+                  className="py-2.5 px-4 bg-white rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors flex items-center justify-center shadow-sm text-[rgb(107, 70, 193)]"
+                  style={{ color: 'rgb(107, 70, 193)' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {translations.downloadPDF[language]}
+                </button>
               </div>
             </div>
             
@@ -1032,7 +979,8 @@ const ResultsPage = ({ view = 'grid' }) => {
                   href={getWhatsAppLink()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium text-sm sm:text-base hover:bg-blue-50 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  className="bg-white text-[rgb(37, 99, 235)] px-4 py-2 rounded-full font-medium text-sm sm:text-base hover:bg-gray-50 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  style={{ color: 'rgb(37, 99, 235)' }}
                 >
                   {(searchParams.get('lang') === 'kz' ? data.coachButtonTextKz : data.coachButtonTextRu) || 
                    translations.consultation[searchParams.get('lang') || language]}
@@ -1051,7 +999,7 @@ const ResultsPage = ({ view = 'grid' }) => {
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-lg font-medium">
+                    <h3 className="text-lg font-medium text-[rgb(107, 70, 193)]">
                       {programs.find(p => p.id === (typeof selectedProgram === 'string' ? parseInt(selectedProgram.split('_')[1]) : selectedProgram))?.[language]}
                     </h3>
                     <button 
@@ -1068,41 +1016,6 @@ const ResultsPage = ({ view = 'grid' }) => {
                       </div>
                     </>
                   )}
-                </div>
-              </div>
-            )}
-            
-            {/* Permalink Modal (if needed) */}
-            {permalinkUrl && (
-              <div className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-                  <h3 className="text-xl font-medium mb-4">
-                    {translations.permalinkLabel[language]}
-                  </h3>
-                  <div className="flex mb-4">
-                    <input
-                      type="text"
-                      value={permalinkUrl}
-                      readOnly
-                      className="flex-grow border rounded-l px-3 py-2"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(permalinkUrl);
-                      }}
-                      className="bg-blue-500 text-white px-4 rounded-r hover:bg-blue-600"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => setPermalinkUrl(null)}
-                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                    >
-                      Close
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
