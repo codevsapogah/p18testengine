@@ -4,6 +4,7 @@ import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import UserForm from '../components/registration/UserForm';
 import { supabase } from '../supabase';
+import { customPublicQuery, insertPublicData, updatePublicData } from '../utils/apiService';
 import { questions } from '../data/questions';
 import { calculateResults } from '../utils/calculateResults';
 import { LanguageContext } from '../contexts/LanguageContext';
@@ -31,25 +32,6 @@ const HomePage = () => {
       const questionIds = questions.map(q => q.id);
       const randomizedIds = shuffleArray([...questionIds]);
       
-      // Create a quiz session
-      await supabase
-        .from('quiz_results')
-        .insert([
-          { 
-            id: sessionId,
-            user_name: 'Random Test',
-            user_phone: '+7 (777) 777-7777',
-            user_email: 'random@test.com',
-            coach_email: 'kmektepbergen@gmail.com',
-            created_at: new Date(),
-            is_random: true,
-            question_order: randomizedIds,
-            current_index: questionIds.length - 1, // Set to the last question
-            answers: {},
-            language: language
-          }
-        ]);
-      
       // Generate random answers for all questions
       const randomAnswers = {};
       questions.forEach(question => {
@@ -57,24 +39,29 @@ const HomePage = () => {
         randomAnswers[question.id] = Math.floor(Math.random() * 6) + 1;
       });
       
-      // Save the random answers
-      await supabase
-        .from('quiz_results')
-        .update({ 
-          answers: randomAnswers 
-        })
-        .eq('id', sessionId);
+      // Create a quiz session and save answers via the API service
+      await insertPublicData('quiz_results', { 
+        id: sessionId,
+        user_name: 'Random Test',
+        user_phone: '+7 (777) 777-7777',
+        user_email: 'random@test.com',
+        coach_email: 'kmektepbergen@gmail.com',
+        created_at: new Date(),
+        is_random: true,
+        question_order: randomizedIds,
+        current_index: questionIds.length - 1, // Set to the last question
+        answers: randomAnswers,
+        language: language
+      });
       
       // Calculate results
       const calculatedResults = calculateResults(randomAnswers);
       
       // Save calculated results
-      await supabase
-        .from('quiz_results')
-        .update({ 
-          calculated_results: calculatedResults 
-        })
-        .eq('id', sessionId);
+      await updatePublicData('quiz_results', 
+        { calculated_results: calculatedResults },
+        { id: sessionId }
+      );
       
       // Navigate to results page
       navigate(`/results/grid/${sessionId}`);

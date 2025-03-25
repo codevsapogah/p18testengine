@@ -36,6 +36,10 @@ function App() {
               <Route path="/test" element={<TestPage />} />
               <Route path="/results/grid/:id" element={<ResultsPage view="grid" />} />
               <Route path="/results/list/:id" element={<ResultsPage view="list" />} />
+              
+              {/* Add direct permalink route */}
+              <Route path="/results/:id" element={<ResultsPage view="grid" />} />
+              
               <Route path="/login" element={<LoginPage />} />
               <Route path="/coach/login" element={<LoginPage />} />
               <Route path="/admin/login" element={<LoginPage />} />

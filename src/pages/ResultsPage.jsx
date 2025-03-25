@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LanguageContext } from '../contexts/LanguageContext';
 import { supabase } from '../supabase';
+import { getQuizSession, createPermalink, getResultsByPermalink } from '../utils/apiService';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import Loading from '../components/common/Loading';
@@ -403,63 +404,60 @@ const ListViewComponent = ({ sortedPrograms, highScorePrograms, language, onProg
   );
 };
 
-// Function to fetch data from Supabase
+// Fetch quiz result function - updated to support permalinks
 const fetchQuizResult = async (id, searchParams) => {
-  const { data, error } = await supabase
-    .from('quiz_results')
-    .select(`
-      *,
-      user:user_id (
-        email
-      ),
-      coach:coach_id (
-        name,
-        email,
-        phone,
-        button_text_ru,
-        button_text_kz
-      )
-    `)
-    .eq('id', id)
-    .single();
+  // Check if the ID is a permalink token (40 characters long)
+  const isPermalink = id && id.length >= 40;
+  
+  try {
+    let rawData;
     
-  if (error) throw error;
-  
-  if (!data) {
-    throw new Error('Results not found');
-  }
-  
-  // Map the data to maintain compatibility with existing code
-  const userData = {
-    ...data,
-    user_name: data.entered_name || '—',
-    user_email: data.user?.email,
-    user_phone: data.entered_phone,
-    coach_email: data.coach?.email,
-    coachName: data.coach?.name,
-    coachPhone: data.coach?.phone,
-    coachButtonTextRu: data.coach?.button_text_ru,
-    coachButtonTextKz: data.coach?.button_text_kz
-  };
-
-  // Get coach phone if needed
-  const coachEmail = userData.coach_email || searchParams.get('coach');
-  if (coachEmail) {
-    const { data: coachData } = await supabase
-      .from('approved_coaches')
-      .select('phone, name, button_text_ru, button_text_kz')
-      .eq('email', coachEmail)
-      .single();
-
-    if (coachData) {
-      userData.coachPhone = coachData.phone;
-      userData.coachName = coachData.name;
-      userData.coachButtonTextRu = coachData.button_text_ru;
-      userData.coachButtonTextKz = coachData.button_text_kz;
+    if (isPermalink) {
+      // Fetch results using the permalink token
+      console.log('Using permalink token to fetch results:', id);
+      rawData = await getResultsByPermalink(id);
+    } else {
+      // Fetch results using the session ID
+      console.log('Using session ID to fetch results:', id);
+      rawData = await getQuizSession(id);
     }
+    
+    console.log('Raw data fetched:', rawData ? `ID: ${rawData.id}` : 'No data');
+    
+    if (!rawData) {
+      throw new Error('No data returned from API');
+    }
+    
+    // Process raw answers into scores if needed
+    let processedData;
+    
+    // If we have calculated_results, extract scores
+    if (rawData.calculated_results) {
+      console.log('Using pre-calculated results');
+      
+      // Extract scores from calculated_results
+      const programScores = Object.entries(rawData.calculated_results).reduce((acc, [programId, data]) => {
+        acc[programId] = data.score;
+        return acc;
+      }, {});
+      
+      // Combine the raw data with the processed scores
+      processedData = {
+        ...rawData,
+        ...programScores
+      };
+    } else {
+      // Calculate scores from scratch
+      console.log('Calculating results from scratch');
+      processedData = processResults(rawData);
+    }
+    
+    console.log('Processed data ready');
+    return processedData;
+  } catch (error) {
+    console.error('Error fetching quiz result:', error);
+    throw error;
   }
-  
-  return userData;
 };
 
 // Function to process results data for display
@@ -584,63 +582,92 @@ const processResults = (data) => {
 };
 
 const ResultsPage = ({ view = 'grid' }) => {
-  const { id } = useParams();
-  const { language } = useContext(LanguageContext);
+  const { id, currentView } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  const [currentView, setCurrentView] = useState(view);
-  const [expandedProgram, setExpandedProgram] = useState(null);
-  const [emailStatus, setEmailStatus] = useState('');
-  
-  // Use React Query to fetch results data
-  const { data: userData, isLoading, error: fetchError } = useQuery({
-    queryKey: ['quiz-result', id],
+  const { language } = useContext(LanguageContext);
+  const [currentViewState, setCurrentViewState] = useState(currentView || view);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [permalinkUrl, setPermalinkUrl] = useState(null);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState(null);
+  const [showProgramInfo, setShowProgramInfo] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+
+  const handleGeneratePermalink = async () => {
+    if (!permalinkUrl && data?.id) {
+      try {
+        console.log('Attempting to generate permalink for session:', data.id);
+        
+        // Check if the current ID is already a permalink token
+        const isPermalink = id && id.length >= 40;
+        
+        if (isPermalink) {
+          // We're already viewing with a permalink, just use the current URL
+          const baseUrl = window.location.origin;
+          setPermalinkUrl(`${baseUrl}/results/${id}`);
+          return;
+        }
+        
+        // Generate a new permalink
+        const permalink = await createPermalink(data.id);
+        const baseUrl = window.location.origin;
+        setPermalinkUrl(`${baseUrl}/results/${permalink.permalink}`);
+      } catch (error) {
+        console.error('Error generating permalink:', error);
+      }
+    }
+  };
+
+  // Query to fetch the data with React Query v5 object syntax
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['quiz_result', id, searchParams.toString()],
     queryFn: () => fetchQuizResult(id, searchParams),
-    staleTime: Infinity, // Never refetch automatically
-    retry: 1, // Only retry once on error
+    retry: 2,
+    refetchOnWindowFocus: false,
+    onSuccess: (data) => {
+      // Check if test is complete and if email has been sent
+      if (data?.calculated_results && !data.email_sent) {
+        // Create permalink automatically when results are loaded
+        handleGeneratePermalink();
+      }
+    }
   });
-  
+
   // Check if the test is complete
   const isTestComplete = useMemo(() => {
-    if (!userData) return false;
+    if (!data) return false;
     
     // Consider test complete if:
     // - It has answers for all 90 questions, OR
     // - current_index is at the end (89 for 90 questions), OR
     // - It was generated by random test
-    return userData.is_random || 
-           (userData.current_index !== undefined && userData.current_index >= 89) ||
-           (userData.answers && Object.keys(userData.answers).length === 90);
-  }, [userData]);
+    return data.is_random || 
+           (data.current_index !== undefined && data.current_index >= 89) ||
+           (data.answers && Object.keys(data.answers).length === 90);
+  }, [data]);
   
   // Check if the test is still in progress
   const isTestInProgress = useMemo(() => {
-    if (!userData || isTestComplete) return false;
+    if (!data || isTestComplete) return false;
     
     // Calculate time since the test was started
-    const createdAt = new Date(userData.created_at);
+    const createdAt = new Date(data.created_at);
     const now = new Date();
     const hoursSinceCreated = (now - createdAt) / (1000 * 60 * 60);
     
     // Consider "in progress" if created less than 2 hours ago
-    return hoursSinceCreated < 2 && userData.answers && Object.keys(userData.answers).length > 0;
-  }, [userData, isTestComplete]);
-  
-  // Process results data with useMemo to prevent unnecessary recalculations
-  const results = useMemo(() => {
-    if (!userData) return null;
-    return processResults(userData);
-  }, [userData]);
+    return hoursSinceCreated < 2 && data.answers && Object.keys(data.answers).length > 0;
+  }, [data, isTestComplete]);
   
   // Process display data with useMemo to prevent unnecessary recalculations
   const { sortedPrograms, highScorePrograms } = useMemo(() => {
-    if (!results) return { sortedPrograms: [], highScorePrograms: [] };
+    if (!data) return { sortedPrograms: [], highScorePrograms: [] };
     
     // Map program IDs to their details from programData
     const processedPrograms = [];
     
-    Object.entries(results).forEach(([programId, score]) => {
+    Object.entries(data).forEach(([programId, score]) => {
       const programIdNum = parseInt(programId);
       const programInfo = programData.find(p => p.id === programIdNum);
       
@@ -670,28 +697,22 @@ const ResultsPage = ({ view = 'grid' }) => {
       sortedPrograms: processedPrograms,
       highScorePrograms: sortedForHighScores
     };
-  }, [results]);
+  }, [data]);
   
   useEffect(() => {
-    setCurrentView(view);
+    setCurrentViewState(view);
   }, [view]);
   
   const handleDownloadPDF = async () => {
     try {
-      if (!results || !userData) {
+      if (!data) {
         throw new Error('No results available');
       }
 
-      // Include coach name in userData
-      const userDataWithCoachName = {
-        ...userData,
-        coachName: userData.coachName
-      };
-
       // Generate either grid or list PDF based on current view
-      const pdfBlob = currentView === 'grid' 
-        ? await generateGridPDF(userDataWithCoachName, sortedPrograms, language, translations, id)
-        : await generateListPDF(userDataWithCoachName, sortedPrograms, language, translations, id);
+      const pdfBlob = currentViewState === 'grid' 
+        ? await generateGridPDF(data, sortedPrograms, language, translations, id)
+        : await generateListPDF(data, sortedPrograms, language, translations, id);
       
       // Create a URL for the blob
       const url = window.URL.createObjectURL(pdfBlob);
@@ -699,7 +720,7 @@ const ResultsPage = ({ view = 'grid' }) => {
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${createSafeFilename(userData, currentView)}.pdf`;
+      link.download = `${createSafeFilename(data, currentViewState)}.pdf`;
       
       // Trigger download
       document.body.appendChild(link);
@@ -714,16 +735,16 @@ const ResultsPage = ({ view = 'grid' }) => {
   };
   
   const toggleView = () => {
-    const newView = currentView === 'grid' ? 'list' : 'grid';
-    setCurrentView(newView);
+    const newView = currentViewState === 'grid' ? 'list' : 'grid';
+    setCurrentViewState(newView);
     navigate(`/results/${newView}/${id}${window.location.search}`);
   };
   
   const getWhatsAppLink = () => {
-    if (!userData.coachPhone) return '#';
+    if (!data.coachPhone) return '#';
     
     // Clean phone number - remove all non-digit characters except the leading plus
-    let cleanPhone = userData.coachPhone.trim();
+    let cleanPhone = data.coachPhone.trim();
     
     // Ensure there's a plus at the beginning if not already there
     if (!cleanPhone.startsWith('+')) {
@@ -743,15 +764,15 @@ const ResultsPage = ({ view = 'grid' }) => {
   };
   
   const handleProgramClick = (programId) => {
-    setExpandedProgram(programId);
+    setSelectedProgram(programId);
   };
 
   useEffect(() => {
-    if (isTestComplete && results && !userData?.email_sent) {
+    if (isTestComplete && data && !data.email_sent) {
       console.log('Email conditions met:', {
         isTestComplete,
-        hasResults: !!results,
-        emailSent: userData?.email_sent,
+        hasResults: !!data,
+        emailSent: data.email_sent,
         id: id
       });
       
@@ -783,7 +804,7 @@ const ResultsPage = ({ view = 'grid' }) => {
             return;
           }
           
-          await sendResultsEmail(userData, sortedPrograms, language, translations, id);
+          await sendResultsEmail(data, sortedPrograms, language, translations, id);
           console.log('Email sent successfully');
         } catch (error) {
           console.error('Error sending results email:', error);
@@ -796,245 +817,297 @@ const ResultsPage = ({ view = 'grid' }) => {
     } else {
       console.log('Skipping email send:', {
         isTestComplete,
-        hasResults: !!results,
-        emailSent: userData?.email_sent
+        hasResults: !!data,
+        emailSent: data?.email_sent
       });
     }
-  }, [isTestComplete, results, userData?.email_sent, id, language, sortedPrograms, userData]);
+  }, [isTestComplete, data?.email_sent, id, language, sortedPrograms, data]);
   
   const handleSendTestEmail = async () => {
     try {
-      if (!userData?.user_email) return;
+      if (!data?.user_email) return;
       
-      setEmailStatus('sending');
+      setIsSendingTestEmail(true);
       await sendTestEmail(
-        userData.user_email, 
+        data.user_email, 
         language,
-        userData,
+        data,
         sortedPrograms,
         translations,
         id
       );
-      setEmailStatus('success');
-      setTimeout(() => setEmailStatus(''), 3000);
+      setIsSendingTestEmail(false);
+      setIsEmailSent(true);
+      setTimeout(() => setIsEmailSent(false), 3000);
     } catch (error) {
       console.error('Test email error:', error);
-      setEmailStatus('error');
-      setTimeout(() => setEmailStatus(''), 3000);
+      setIsEmailSent(false);
+      setEmailError('Error sending test email');
+      setTimeout(() => setEmailError(null), 3000);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
       
-      <main className="flex-grow px-4 sm:px-6 py-4">
-        <div className="max-w-6xl mx-auto">
-          {isLoading ? (
-            <Loading fullScreen />
-          ) : fetchError ? (
-            <div className="bg-red-100 p-4 rounded-lg text-red-700 text-center">
-              <p className="font-medium">{fetchError.message}</p>
-              <button
-                onClick={() => navigate('/')}
-                className="mt-4 bg-red-500 text-white py-2 px-6 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                {translations.return[language]}
-              </button>
+      <main className="flex-grow container mx-auto px-4 py-8">
+        {isLoading ? (
+          <div className="text-center py-16">
+            <Loading message={translations.loading[language]} />
+          </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <div className="mb-4 text-red-600 text-xl">
+              {translations.error[language]}
             </div>
-          ) : !userData ? (
-            <div className="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center">
-              <p className="font-medium">{translations.notFound[language]}</p>
-              <button
-                onClick={() => navigate('/')}
-                className="mt-4 bg-yellow-500 text-white py-2 px-6 rounded-lg hover:bg-yellow-600 transition-colors"
-              >
-                {translations.return[language]}
-              </button>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              {translations.reload[language]}
+            </button>
+          </div>
+        ) : !data ? (
+          <div className="text-center py-16">
+            <div className="mb-4 text-xl">
+              {translations.notFound[language]}
             </div>
-          ) : isTestInProgress ? (
-            <div className="bg-blue-100 p-6 rounded-lg text-blue-700 text-center">
-              <h2 className="font-bold text-xl mb-3">{translations.testInProgress[language]}</h2>
-              <p className="font-medium mb-4">
-                {translations.inProgressMessage[language]}
-              </p>
-              <button
-                onClick={() => navigate('/')}
-                className="mt-2 bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                {translations.return[language]}
-              </button>
-            </div>
-          ) : !isTestComplete ? (
-            <div className="bg-orange-100 p-6 rounded-lg text-orange-700 text-center">
-              <h2 className="font-bold text-xl mb-3">{translations.incompleteTest[language]}</h2>
-              <p className="font-medium mb-4">
-                {translations.incompleteMessage[language]
-                  .replace('{questionNum}', (userData.current_index !== undefined ? userData.current_index + 1 : '?'))
-                  .replace('{answeredCount}', (userData.answers ? Object.keys(userData.answers).length : 0))
-                }
-              </p>
-              <button
-                onClick={() => navigate('/')}
-                className="mt-2 bg-orange-500 text-white py-2 px-6 rounded-lg hover:bg-orange-600 transition-colors"
-              >
-                {translations.return[language]}
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Header with user info - COMPLETELY REDESIGNED */}
-              <div className="rounded-lg shadow-lg p-4 sm:p-6 mb-8 text-white" style={{ backgroundColor: '#6B46C1' }}>
-                {/* Title and user info */}
-                <div className="mb-6">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-4">
-                    {userData.entered_name || '—'}, {language === 'ru' ? 'вот ваши результаты теста P18' : 'сіздің P18 тестінің нәтижелері'}
-                  </h1>
+            <button
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              {translations.return[language]}
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* New Purple Header Section */}
+            <div className="mb-8 bg-purple-600 rounded-lg shadow-md p-6 text-white">
+              <h1 className="text-2xl font-bold mb-4">
+                {data.user_name ? `${data.user_name}, ` : ''}
+                {language === 'ru' ? 'вот ваши результаты теста P18' : 'міне сіздің P18 тест нәтижелеріңіз'}
+              </h1>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                  {formatDate(data.created_at, language)}
+                </div>
+                <div>
+                  {data.user_email}
+                </div>
+                <div>
+                  {language === 'ru' ? 'Коуч: ' : 'Коуч: '}
+                  {data.coachName || 'Нурболат'}
+                </div>
+              </div>
+              
+              {/* Improved Tab Navigation */}
+              <div className="flex">
+                <div className="w-full grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => currentViewState !== 'list' && toggleView()}
+                    className={`py-3 px-5 rounded-md text-center transition-colors ${
+                      currentViewState === 'list' 
+                        ? 'bg-purple-500 text-white' 
+                        : 'bg-white text-purple-800'
+                    }`}
+                  >
+                    {translations.listView[language]}
+                  </button>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div className="flex items-center">
-                      <span>{formatDate(userData.created_at, language)}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span>{userData.user?.email}</span>
-                    </div>
-                    {userData.coach_email && (
-                      <div className="flex items-center">
-                        <span>{translations.coachEmail[language]}: {userData.coachName || userData.coach_email}</span>
-                      </div>
-                    )}
+                  <button 
+                    onClick={() => currentViewState !== 'grid' && toggleView()}
+                    className={`py-3 px-5 rounded-md text-center transition-colors ${
+                      currentViewState === 'grid' 
+                        ? 'bg-purple-500 text-white' 
+                        : 'bg-white text-purple-800'
+                    }`}
+                  >
+                    {translations.gridView[language]}
+                  </button>
+                </div>
+                
+                <div className="ml-2">
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex items-center justify-center h-full w-full bg-white text-purple-800 rounded-md px-5 py-3 hover:bg-gray-100 transition-colors"
+                  >
+                    <span className="mr-2">↓</span>
+                    {translations.downloadPDF[language]}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Legacy User Info Section (hidden in new design) */}
+            <div className="hidden mb-6 bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">
+                {translations.userInfo[language]}
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="mb-2">
+                    <span className="font-medium">{translations.name[language]}:</span> {data.user_name}
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-medium">{translations.email[language]}:</span> {data.user_email}
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-medium">{translations.phone[language]}:</span> {data.user_phone}
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-medium">{translations.date[language]}:</span> {formatDate(data.created_at, language)}
                   </div>
                 </div>
                 
-                {/* Control buttons - in a separate row with fixed layout */}
-                <div className={`grid gap-3 ${searchParams.has('admin') ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                  {/* View toggle buttons */}
-                  <div className="flex rounded-lg overflow-hidden bg-white/20 shadow-inner">
-                    <button
-                      onClick={() => toggleView('list')}
-                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'list' ? 'bg-white' : 'text-white hover:bg-white/10'}`}
-                      style={currentView === 'list' ? {color: '#6B46C1'} : {}}
-                    >
-                      {translations.listView[language]}
-                    </button>
-                    <button
-                      onClick={() => toggleView('grid')}
-                      className={`py-2.5 px-4 text-sm font-medium flex-1 transition-colors ${currentView === 'grid' ? 'bg-white' : 'text-white hover:bg-white/10'}`}
-                      style={currentView === 'grid' ? {color: '#6B46C1'} : {}}
-                    >
-                      {translations.gridView[language]}
-                    </button>
-                  </div>
-                  
-                  {/* Download PDF button */}
-                  <button
-                    onClick={handleDownloadPDF}
-                    className="py-2.5 px-4 bg-white rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors flex items-center justify-center shadow-sm"
-                    style={{ color: '#6B46C1' }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    {translations.downloadPDF[language]}
-                  </button>
-
-                  {/* Test email button - only show if admin param exists */}
-                  {searchParams.has('admin') && (
-                    <button
-                      onClick={handleSendTestEmail}
-                      className={`py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center shadow-sm ${
-                        emailStatus === 'success' 
-                          ? 'bg-green-500 text-white' 
-                          : emailStatus === 'error'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-white hover:bg-gray-100'
-                      }`}
-                      style={emailStatus === '' ? { color: '#6B46C1' } : {}}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      {emailStatus === 'success' 
-                        ? translations.emailSent[language]
-                        : emailStatus === 'error'
-                        ? translations.emailError[language]
-                        : translations.sendTestEmail[language]}
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Main content */}
-              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
-                {currentView === 'grid' ? (
-                  <GridViewComponent 
-                    sortedPrograms={sortedPrograms}
-                    highScorePrograms={highScorePrograms}
-                    language={language}
-                    onProgramClick={handleProgramClick}
-                  />
-                ) : (
-                  <ListViewComponent
-                    sortedPrograms={sortedPrograms}
-                    highScorePrograms={highScorePrograms}
-                    language={language}
-                    onProgramClick={handleProgramClick}
-                  />
-                )}
-              </div>
-              
-              {/* Call to action */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-md p-4 sm:p-6 text-white mb-8">
-                <p className="mb-4 text-sm sm:text-base leading-relaxed">
-                  {translations.promo[language]}
-                </p>
-                <div className="flex justify-center">
-                  <a
-                    href={getWhatsAppLink()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium text-sm sm:text-base hover:bg-blue-50 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                  >
-                    {(searchParams.get('lang') === 'kz' ? userData.coachButtonTextKz : userData.coachButtonTextRu) || 
-                     translations.consultation[searchParams.get('lang') || language]}
-                  </a>
-                </div>
-              </div>
-              
-              {/* Program details modal */}
-              {expandedProgram && (currentView === 'grid' || (typeof expandedProgram === 'string' && expandedProgram.startsWith('high_'))) && (
-                <div 
-                  className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-                  onClick={() => setExpandedProgram(null)}
-                >
-                  <div 
-                    className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <div className="flex justify-between items-center p-4 border-b">
-                      <h3 className="text-lg font-medium">
-                        {programs.find(p => p.id === (typeof expandedProgram === 'string' ? parseInt(expandedProgram.split('_')[1]) : expandedProgram))?.[language]}
-                      </h3>
-                      <button 
-                        onClick={() => setExpandedProgram(null)}
-                        className="text-gray-400 hover:text-gray-500"
-                      >
-                        ✕
-                      </button>
+                <div className="flex flex-col">
+                  {/* Permalink section */}
+                  {permalinkUrl && (
+                    <div className="mb-4">
+                      <div className="font-medium mb-1">{translations.permalinkLabel[language]}</div>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          value={permalinkUrl}
+                          readOnly
+                          className="flex-grow border rounded-l px-2 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(permalinkUrl);
+                            // Show copied notification or feedback
+                          }}
+                          className="bg-gray-200 hover:bg-gray-300 px-2 rounded-r"
+                        >
+                          📋
+                        </button>
+                      </div>
                     </div>
-                    {programData.find(p => p.id === (typeof expandedProgram === 'string' ? parseInt(expandedProgram.split('_')[1]) : expandedProgram)) && (
-                      <>
-                        <div className="bg-blue-50 p-4 whitespace-pre-line">
-                          {programData.find(p => p.id === (typeof expandedProgram === 'string' ? parseInt(expandedProgram.split('_')[1]) : expandedProgram)).description[language]}
-                        </div>
-                      </>
+                  )}
+                  
+                  {/* Buttons */}
+                  <div className="flex flex-wrap gap-2 mt-auto">
+                    {/* Generate permalink button if not already shown */}
+                    {!permalinkUrl && (
+                      <button
+                        onClick={handleGeneratePermalink}
+                        className="px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm flex-grow"
+                      >
+                        {translations.permalink[language]}
+                      </button>
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+            
+            {/* Main content */}
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
+              {currentViewState === 'grid' ? (
+                <GridViewComponent 
+                  sortedPrograms={sortedPrograms}
+                  highScorePrograms={highScorePrograms}
+                  language={language}
+                  onProgramClick={handleProgramClick}
+                />
+              ) : (
+                <ListViewComponent
+                  sortedPrograms={sortedPrograms}
+                  highScorePrograms={highScorePrograms}
+                  language={language}
+                  onProgramClick={handleProgramClick}
+                />
               )}
-            </>
-          )}
-        </div>
+            </div>
+            
+            {/* Call to action */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-md p-4 sm:p-6 text-white mb-8">
+              <p className="mb-4 text-sm sm:text-base leading-relaxed">
+                {translations.promo[language]}
+              </p>
+              <div className="flex justify-center">
+                <a
+                  href={getWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium text-sm sm:text-base hover:bg-blue-50 transition-colors shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                >
+                  {(searchParams.get('lang') === 'kz' ? data.coachButtonTextKz : data.coachButtonTextRu) || 
+                   translations.consultation[searchParams.get('lang') || language]}
+                </a>
+              </div>
+            </div>
+            
+            {/* Program details modal */}
+            {selectedProgram && (currentViewState === 'grid' || (typeof selectedProgram === 'string' && selectedProgram.startsWith('high_'))) && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+                onClick={() => setSelectedProgram(null)}
+              >
+                <div 
+                  className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-lg font-medium">
+                      {programs.find(p => p.id === (typeof selectedProgram === 'string' ? parseInt(selectedProgram.split('_')[1]) : selectedProgram))?.[language]}
+                    </h3>
+                    <button 
+                      onClick={() => setSelectedProgram(null)}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {programData.find(p => p.id === (typeof selectedProgram === 'string' ? parseInt(selectedProgram.split('_')[1]) : selectedProgram)) && (
+                    <>
+                      <div className="bg-blue-50 p-4 whitespace-pre-line">
+                        {programData.find(p => p.id === (typeof selectedProgram === 'string' ? parseInt(selectedProgram.split('_')[1]) : selectedProgram)).description[language]}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Permalink Modal (if needed) */}
+            {permalinkUrl && (
+              <div className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                  <h3 className="text-xl font-medium mb-4">
+                    {translations.permalinkLabel[language]}
+                  </h3>
+                  <div className="flex mb-4">
+                    <input
+                      type="text"
+                      value={permalinkUrl}
+                      readOnly
+                      className="flex-grow border rounded-l px-3 py-2"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(permalinkUrl);
+                      }}
+                      className="bg-blue-500 text-white px-4 rounded-r hover:bg-blue-600"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setPermalinkUrl(null)}
+                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </main>
       
       <Footer />

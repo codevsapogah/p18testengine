@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
-// Remove direct Supabase connection since we'll use our API
-// import { supabase } from '../supabase';
+// Import the new updateSupabaseAuth function
+import { updateSupabaseAuth } from '../supabase';
 
 export const AuthContext = createContext();
 
@@ -28,6 +28,8 @@ export const AuthProvider = ({ children }) => {
           const data = await response.json();
           setUser(data.user);
           setRole(data.user.role);
+          // Update Supabase auth with the token from cookies
+          updateSupabaseAuth();
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -61,6 +63,9 @@ export const AuthProvider = ({ children }) => {
         setUser(data.user);
         setRole(data.user.role);
         
+        // Update Supabase auth with the new token
+        updateSupabaseAuth();
+        
         return { 
           success: true, 
           is_admin: data.user.role === 'admin',
@@ -88,11 +93,17 @@ export const AuthProvider = ({ children }) => {
       // Clear user data regardless of response
       setUser(null);
       setRole(null);
+      
+      // Update Supabase auth to clear the token
+      updateSupabaseAuth();
     } catch (error) {
       console.error('Logout error:', error);
       // Still clear user data on error
       setUser(null);
       setRole(null);
+      
+      // Still update Supabase auth
+      updateSupabaseAuth();
     }
   };
   

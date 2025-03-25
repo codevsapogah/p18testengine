@@ -1,10 +1,11 @@
-const { supabase } = require('../utils/supabase');
+const { supabase, supabaseAdmin } = require('../utils/supabase');
 
 // Get all clients for the logged-in coach
 exports.getClients = async (req, res) => {
   try {
     const coachId = req.user.id;
     
+    // Use standard supabase client to respect RLS policy
     const { data, error } = await supabase
       .from('clients')
       .select('*')
@@ -25,6 +26,7 @@ exports.getClientById = async (req, res) => {
     const coachId = req.user.id;
     const clientId = req.params.id;
     
+    // Use standard supabase client to respect RLS policy
     const { data, error } = await supabase
       .from('clients')
       .select('*')

@@ -1,4 +1,4 @@
-const { supabase } = require('../utils/supabase');
+const { supabase, supabaseAdmin } = require('../utils/supabase');
 const { generateToken } = require('../middleware/auth');
 
 // Login controller
@@ -44,8 +44,9 @@ exports.login = async (req, res) => {
     const lowerEmail = email.toLowerCase().trim();
     console.log('Querying Supabase for user with email (case insensitive):', lowerEmail);
     
+    // Use supabaseAdmin to bypass RLS for authentication
     // First try exact match
-    let { data, error } = await supabase
+    let { data, error } = await supabaseAdmin
       .from('approved_coaches')
       .select('*')
       .eq('email', email)
@@ -54,7 +55,7 @@ exports.login = async (req, res) => {
     // If no exact match, try case-insensitive match
     if (!data && !error) {
       console.log('No exact match, trying case-insensitive search');
-      const { data: allUsers, error: listError } = await supabase
+      const { data: allUsers, error: listError } = await supabaseAdmin
         .from('approved_coaches')
         .select('*');
         

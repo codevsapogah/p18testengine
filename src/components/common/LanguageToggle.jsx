@@ -11,19 +11,37 @@ const LanguageToggle = () => {
         className="flex items-center px-3 py-1 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
         aria-label={`Switch to ${language === 'ru' ? 'Kazakh' : 'Russian'}`}
       >
-        {language === 'ru' ? (
-          <>
-            <span className="mr-2">🇷🇺</span>
-            <span>RU</span>
-            <span className="ml-2 text-gray-400">→ 🇰🇿 KZ</span>
-          </>
-        ) : (
-          <>
-            <span className="mr-2">🇰🇿</span>
-            <span>KZ</span>
-            <span className="ml-2 text-gray-400">→ 🇷🇺 RU</span>
-          </>
-        )}
+        {/* Desktop and tablet version */}
+        <div className="hidden md:flex items-center">
+          {language === 'ru' ? (
+            <>
+              <span className="mr-2">🇷🇺</span>
+              <span>RU</span>
+              <span className="ml-2 text-gray-400">→ 🇰🇿 KZ</span>
+            </>
+          ) : (
+            <>
+              <span className="mr-2">🇰🇿</span>
+              <span>KZ</span>
+              <span className="ml-2 text-gray-400">→ 🇷🇺 RU</span>
+            </>
+          )}
+        </div>
+        
+        {/* Mobile version - just show current language */}
+        <div className="flex md:hidden items-center">
+          {language === 'ru' ? (
+            <>
+              <span className="mr-1">🇷🇺</span>
+              <span>RU</span>
+            </>
+          ) : (
+            <>
+              <span className="mr-1">🇰🇿</span>
+              <span>KZ</span>
+            </>
+          )}
+        </div>
       </button>
     </div>
   );

@@ -1,0 +1,59 @@
+# P18 Psychology Test Platform: Project Rules
+
+## Naming Conventions
+- React components use PascalCase (e.g., `UserManagement.jsx`)
+- JavaScript utility files use camelCase (e.g., `authUtils.js`)
+- CSS classes follow Tailwind conventions
+- API endpoints use kebab-case (e.g., `/api/user-tests`)
+- Database tables use snake_case (e.g., `user_results`)
+- RLS policies use descriptive names in double quotes (e.g., `"Admins can read all users"`)
+
+## File Organization
+- React components stored in `/src/components/`
+- Pages/routes stored in `/src/pages/`
+- Utility functions in `/src/utils/`
+- Context providers in `/src/contexts/`
+- Custom hooks in `/src/hooks/`
+- Backend routes in `/server/routes/`
+- Backend controllers in `/server/controllers/`
+- Supabase migrations in `/supabase/migrations/`
+
+## Code Patterns
+- Functional components with hooks preferred over class components
+- React Query used for data fetching
+- Try/catch blocks for error handling in async functions
+- Controller-service pattern for backend logic
+- JWT authentication via HTTP-only cookies
+- Early return pattern for validation and error conditions
+- RLS for controlling database access at the row level
+
+## Database Access Patterns
+- Client-side code uses supabase client with anon key (respects RLS)
+- Server-side code uses supabaseAdmin client with service role key (bypasses RLS)
+- Authentication operations always use supabaseAdmin to bypass RLS
+- Admin operations always use supabaseAdmin to bypass RLS
+- Coach/client operations use standard supabase client to enforce RLS
+
+## Development Workflow
+- Server must be running for frontend development
+- Environment variables configured in appropriate `.env` files
+- Deploy frontend and backend separately
+- Testing on local environment before deployment
+- New database changes implemented as migration files
+
+## Security Practices
+- All user input validated on both client and server
+- Authentication checks in middleware for protected routes
+- Role-based access control for sensitive operations
+- No sensitive information in client-side code
+- Data filtering based on user permissions
+- Row-Level Security (RLS) enabled on all database tables
+- Never use service role key in client-side code
+
+## Project-Specific Guidelines
+- Psychological test data treated as sensitive information
+- User roles include: admin, professional, client
+- Test results require specific visualization formats
+- PDF reports follow professional clinical standards
+- Email templates maintain consistent branding
+- Database RLS policies enforce role-based access control 

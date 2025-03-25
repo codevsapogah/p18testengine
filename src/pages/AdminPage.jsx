@@ -173,18 +173,20 @@ const AdminPage = () => {
           <div className="flex flex-col md:hidden">
             {/* Line 1: Dashboard name | User name */}
             <div className="flex justify-between items-center mb-3">
-              <h1 className="text-lg font-bold text-gray-900">
-                {language === 'ru' ? 'Панель администратора' : 'Әкімші панелі'}
-              </h1>
-              <span className="text-gray-600 max-w-[160px] truncate text-right">
+              <div className="flex items-center">
+                <h1 className="text-lg font-bold text-gray-900 mr-2">
+                  {language === 'ru' ? 'Панель администратора' : 'Әкімші панелі'}
+                </h1>
+                <LanguageToggle />
+              </div>
+              <span className="text-gray-600 max-w-[120px] truncate text-right">
                 {user?.name || user?.email}
               </span>
             </div>
             
-            {/* Line 2: Tools, Back, Language toggle | Logout button */}
+            {/* Line 2: Tool buttons and logout */}
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">
-                <LanguageToggle />
                 <button
                   onClick={() => setShowTools(!showTools)}
                   className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded hover:bg-indigo-200"
@@ -208,7 +210,7 @@ const AdminPage = () => {
               </div>
               <button
                 onClick={logout}
-                className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 whitespace-nowrap"
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 whitespace-nowrap text-xs"
               >
                 {language === 'ru' ? 'Выйти' : 'Шығу'}
               </button>

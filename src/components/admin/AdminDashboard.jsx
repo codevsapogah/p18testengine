@@ -450,68 +450,68 @@ const AdminDashboard = () => {
   
   return (
     <div>
-      <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+      <div className="mb-8 bg-white rounded-lg shadow-md p-4 sm:p-6">
         {/* Cards Section */}
-        <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Total Tests Card */}
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
-            <div className="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+            <div className="p-2 mr-3 text-blue-500 bg-blue-100 rounded-full flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
               </svg>
             </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-600">{translations.totalTests[language]}</p>
+            <div className="min-w-0">
+              <p className="mb-1 text-sm font-medium text-gray-600">{translations.totalTests[language]}</p>
               <p className="text-lg font-semibold text-gray-700">{results.length}</p>
-              <Link to="/admin/dashboard" className="text-sm text-blue-500 hover:underline">{translations.viewAll[language]}</Link>
+              <Link to="/admin/dashboard" className="text-xs text-blue-500 hover:underline block truncate">{translations.viewAll[language]}</Link>
             </div>
           </div>
 
           {/* Total Coaches Card */}
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
-            <div className="p-3 mr-4 text-green-500 bg-green-100 rounded-full">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+            <div className="p-2 mr-3 text-green-500 bg-green-100 rounded-full flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
               </svg>
             </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-600">{translations.totalCoaches[language]}</p>
+            <div className="min-w-0">
+              <p className="mb-1 text-sm font-medium text-gray-600">{translations.totalCoaches[language]}</p>
               <p className="text-lg font-semibold text-gray-700">{coaches.length}</p>
-              <Link to="/admin/coaches" className="text-sm text-blue-500 hover:underline">{translations.viewAll[language]}</Link>
+              <Link to="/admin/coaches" className="text-xs text-blue-500 hover:underline block truncate">{translations.viewAll[language]}</Link>
             </div>
           </div>
 
           {/* Latest Result Card */}
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
-            <div className="p-3 mr-4 text-purple-500 bg-purple-100 rounded-full">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+            <div className="p-2 mr-3 text-purple-500 bg-purple-100 rounded-full flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
             </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-600">{translations.latestResult[language]}</p>
-              <p className="text-lg font-semibold text-gray-700">
+            <div className="min-w-0">
+              <p className="mb-1 text-sm font-medium text-gray-600">{translations.latestResult[language]}</p>
+              <p className="text-lg font-semibold text-gray-700 truncate">
                 {results.length > 0 ? results[0].user_name || '—' : '—'}
               </p>
-              <Link to={results.length > 0 ? `/admin/results/${results[0].id}` : '#'} className="text-sm text-blue-500 hover:underline">
+              <Link to={results.length > 0 ? `/admin/results/${results[0].id}` : '#'} className="text-xs text-blue-500 hover:underline block truncate">
                 {translations.viewResults[language]}
               </Link>
             </div>
           </div>
 
           {/* Finances Card */}
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md">
-            <div className="p-3 mr-4 text-yellow-500 bg-yellow-100 rounded-full">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+            <div className="p-2 mr-3 text-yellow-500 bg-yellow-100 rounded-full flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
             </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-600">{translations.finances[language]}</p>
+            <div className="min-w-0">
+              <p className="mb-1 text-sm font-medium text-gray-600">{translations.finances[language]}</p>
               <p className="text-lg font-semibold text-gray-700">
                 -
               </p>
-              <Link to="/admin/finance" className="text-sm text-blue-500 hover:underline">
+              <Link to="/admin/finance" className="text-xs text-blue-500 hover:underline block truncate">
                 {translations.viewFinancials[language]}
               </Link>
             </div>

@@ -1,18 +1,23 @@
 const express = require('express');
-const adminController = require('../controllers/admin');
 const { isAdmin } = require('../middleware/auth');
+const adminController = require('../controllers/admin');
 
 const router = express.Router();
 
-// Apply admin auth middleware to all routes
+// Admin-only routes that require auth
 router.use(isAdmin);
 
-// Admin routes
+// Analytics routes
+router.get('/analytics', adminController.getAnalytics);
+router.get('/test-results', adminController.getTestResults);
 router.get('/coaches', adminController.getCoaches);
-router.post('/coaches', adminController.createCoach);
-router.put('/coaches/:id', adminController.updateCoach);
-router.delete('/coaches/:id', adminController.deleteCoach);
-router.get('/all-clients', adminController.getAllClients);
-router.get('/all-results', adminController.getAllResults);
+router.post('/update-coach', adminController.updateCoach);
+router.delete('/coach/:id', adminController.deleteCoach);
+
+// Add a database query route for bypassing RLS
+router.post('/db-query', adminController.handleDatabaseQuery);
+
+// Add a custom query route for more complex operations
+router.post('/custom-query', adminController.handleCustomQuery);
 
 module.exports = router; 

@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../supabase';
+import { customPublicQuery, insertPublicData, getPublicData } from '../../utils/apiService';
 import { LanguageContext } from '../../contexts/LanguageContext';
 import InputMask from 'react-input-mask';
 
@@ -117,88 +118,66 @@ const UserForm = () => {
     
     try {
       // First, try to find existing user or create new one
-      const { data: existingUser, error: userLookupError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', formData.user_email)
-        .single();
+      const existingUsers = await getPublicData('users', {
+        filters: { email: formData.user_email }
+      });
 
       let userId;
       
-      if (userLookupError) {
+      if (!existingUsers || existingUsers.length === 0) {
         // User doesn't exist, create new one
-        const { data: newUser, error: createUserError } = await supabase
-          .from('users')
-          .insert([{ 
-            email: formData.user_email
-          }])
-          .select('id')
-          .single();
+        const newUser = await insertPublicData('users', { 
+          email: formData.user_email
+        });
           
-        if (createUserError) throw createUserError;
-        userId = newUser.id;
+        if (!newUser || !newUser[0]) throw new Error('Failed to create user');
+        userId = newUser[0].id;
       } else {
-        userId = existingUser.id;
+        userId = existingUsers[0].id;
       }
 
       // Add entry to user_details_history
-      const { error: historyError } = await supabase
-        .from('user_details_history')
-        .insert([{
-          user_id: userId,
-          name: formData.user_name,
-          phone: formData.user_phone
-        }]);
-
-      if (historyError) {
-        console.error('Error saving user details history:', historyError);
-      }
+      await insertPublicData('user_details_history', {
+        user_id: userId,
+        name: formData.user_name,
+        phone: formData.user_phone
+      });
 
       const sessionId = Math.random().toString(36).substring(2, 15);
       
       // Get coach ID from email
-      const { data: coachData, error: coachError } = await supabase
-        .from('approved_coaches')
-        .select('id')
-        .eq('email', formData.coach_email)
-        .single();
+      const coaches = await getPublicData('approved_coaches', {
+        filters: { email: formData.coach_email }
+      });
         
-      if (coachError) throw coachError;
+      if (!coaches || coaches.length === 0) throw new Error('Coach not found');
+      const coachId = coaches[0].id;
 
-      const { error: quizError } = await supabase
-        .from('quiz_results')
-        .insert([
-          { 
-            id: sessionId,
-            user_id: userId,
-            coach_id: coachData.id,
-            created_at: new Date(),
-            is_random: false,
-            answers: {},
-            language: language,
-            entered_name: formData.user_name,  // Store the entered name with the quiz result
-            entered_phone: formData.user_phone  // Store the entered phone with the quiz result
-          }
-        ]);
+      await insertPublicData('quiz_results', { 
+        id: sessionId,
+        user_id: userId,
+        coach_id: coachId,
+        created_at: new Date(),
+        is_random: false,
+        answers: {},
+        language: language,
+        entered_name: formData.user_name,  // Store the entered name with the quiz result
+        entered_phone: formData.user_phone  // Store the entered phone with the quiz result
+      });
         
       console.log('Saving quiz result:', {
         sessionId,
         userId,
-        coachId: coachData.id,
+        coachId,
         name: formData.user_name,
         phone: formData.user_phone
       });
-        
-      if (quizError) {
-        console.error('Error saving quiz result:', quizError);
-        throw quizError;
-      }
       
       localStorage.setItem('quiz_session_id', sessionId);
       navigate('/test');
       
     } catch (err) {
-      console.error('Error registering user:', err);
+      console.error('Form submission error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
