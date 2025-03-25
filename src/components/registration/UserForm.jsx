@@ -28,7 +28,7 @@ const translations = {
   },
   phone: {
     ru: 'Номер телефона',
-    kz: 'Телефон нөірі'
+    kz: 'Телефон нөмірі'
   },
   email: {
     ru: 'Ваш email',
